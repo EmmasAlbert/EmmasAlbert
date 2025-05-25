@@ -1,7 +1,7 @@
 # 你好呀~ 👋 我是EmmasAlbert 
 
 <p align="center">
-  <img src="https://github.com/EmmasAlbert/README/416.png" width="150" />
+  <img src="./416.png" width="150" />
 </p>
 
 一个正在学习编程的新人，请多多指教！
