@@ -1,7 +1,7 @@
 # 你好呀~ 👋 EmmasAlbert [你的昵称]
 
 <p align="center">
-  <img src="https://i.imgur.com/简单头像.png" width="150" />
+  <img src="https://github.com/EmmasAlbert/README/416.png" width="150" />
 </p>
 
 一个正在学习编程的新人，请多多指教！
