@@ -1,16 +1,28 @@
-## Hi there 👋
+# 你好呀~ 👋 EmmasAlbert [你的昵称]
 
-<!--
-**EmmasAlbert/EmmasAlbert** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+<p align="center">
+  <img src="https://i.imgur.com/简单头像.png" width="150" />
+</p>
 
-Here are some ideas to get you started:
+一个正在学习编程的新人，请多多指教！
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+## 🌱 目前正在学习
+
+- Python 基础
+- Web 开发 (HTML/CSS/JavaScript)
+- Git 版本控制
+
+## 🎯 小目标
+
+- [ ] 完成第一个个人项目
+- [ ] 贡献一个开源项目
+- [ ] 每天坚持写代码
+
+## 📫 如何联系我
+
+- 邮箱: [你的邮箱]
+- QQ/微信: [你的联系方式]
+
+<p align="center">
+  <img src="https://github-readme-stats.vercel.app/api?username=你的用户名&show_icons=true&theme=default" width="400" />
+</p>
