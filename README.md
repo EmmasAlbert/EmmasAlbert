@@ -20,9 +20,8 @@
 
 ## 📫 如何联系我
 
-- 邮箱: [你的邮箱]
-- QQ/微信: [你的联系方式]
-
+- 邮箱: 2057680774@qq.com
+- QQ/微信: 2057680774
 <p align="center">
-  <img src="https://github-readme-stats.vercel.app/api?username=你的用户名&show_icons=true&theme=default" width="400" />
+  <img src="https://github-readme-stats.vercel.app/api?username=EmmasAlbert&show_icons=true&theme=default" width="400" />
 </p>
