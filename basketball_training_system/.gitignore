@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 虚拟环境
+venv/
+env/
+ENV/
+
+# 数据文件
+data/raw/*.mp4
+data/raw/*.avi
+data/raw/*.mov
+data/raw/*.mkv
+data/processed/
+*.db
+
+# 模型文件
+models/*.pt
+models/*.pth
+models/*.onnx
+
+# 日志文件
+logs/*.log
+
+# 输出文件
+outputs/videos/*.mp4
+outputs/reports/*.pdf
+outputs/reports/*.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# 临时文件
+*.tmp
+*.bak
+*.cache

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLOv8篮球训练辅助系统</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <header class="header">
+            <h1>🏀 YOLOv8篮球训练辅助系统</h1>
+            <div class="user-info">
+                <span id="welcomeMsg">欢迎使用</span>
+                <button id="logoutBtn" class="btn btn-secondary" style="display:none;">退出登录</button>
+            </div>
+        </header>
+
+        <!-- 登录/注册表单 -->
+        <div id="authSection" class="auth-section">
+            <div class="auth-container">
+                <div class="auth-tabs">
+                    <button class="tab-btn active" data-tab="login">登录</button>
+                    <button class="tab-btn" data-tab="register">注册</button>
+                </div>
+
+                <!-- 登录表单 -->
+                <div id="loginForm" class="auth-form active">
+                    <h2>用户登录</h2>
+                    <input type="text" id="loginUsername" placeholder="用户名" required>
+                    <input type="password" id="loginPassword" placeholder="密码" required>
+                    <button class="btn btn-primary" onclick="login()">登录</button>
+                    <div id="loginMessage" class="message"></div>
+                </div>
+
+                <!-- 注册表单 -->
+                <div id="registerForm" class="auth-form">
+                    <h2>用户注册</h2>
+                    <input type="text" id="regUsername" placeholder="用户名" required>
+                    <input type="password" id="regPassword" placeholder="密码" required>
+                    <input type="email" id="regEmail" placeholder="邮箱（可选）">
+                    <input type="text" id="regFullName" placeholder="姓名（可选）">
+                    <button class="btn btn-primary" onclick="register()">注册</button>
+                    <div id="registerMessage" class="message"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主要功能区 -->
+        <div id="mainSection" class="main-section" style="display:none;">
+            <!-- 功能选项卡 -->
+            <div class="function-tabs">
+                <button class="func-tab-btn active" data-func="camera">📷 实时摄像头</button>
+                <button class="func-tab-btn" data-func="video">📹 视频上传</button>
+                <button class="func-tab-btn" data-func="history">📊 训练历史</button>
+            </div>
+
+            <!-- 摄像头模式 -->
+            <div id="cameraMode" class="function-panel active">
+                <h2>实时摄像头检测</h2>
+                <div class="camera-container">
+                    <video id="cameraVideo" autoplay playsinline></video>
+                    <canvas id="cameraCanvas" style="display:none;"></canvas>
+                </div>
+                <div class="control-panel">
+                    <button id="startCameraBtn" class="btn btn-primary">开启摄像头</button>
+                    <button id="stopCameraBtn" class="btn btn-danger" style="display:none;">关闭摄像头</button>
+                </div>
+                <div class="detection-info">
+                    <h3>检测信息</h3>
+                    <div id="cameraDetectionInfo">
+                        <p>🏀 篮球: <span id="ballCount">0</span></p>
+                        <p>👤 人员: <span id="personCount">0</span></p>
+                        <p>🎯 篮筐: <span id="hoopCount">0</span></p>
+                    </div>
+                </div>
+                <div class="analysis-feedback">
+                    <h3>实时反馈</h3>
+                    <div id="cameraFeedback" class="feedback-box">
+                        等待检测...
+                    </div>
+                </div>
+            </div>
+
+            <!-- 视频上传模式 -->
+            <div id="videoMode" class="function-panel">
+                <h2>视频上传分析</h2>
+                <div class="upload-container">
+                    <input type="file" id="videoFileInput" accept="video/*" style="display:none;">
+                    <button class="btn btn-primary" onclick="document.getElementById('videoFileInput').click()">
+                        选择视频文件
+                    </button>
+                    <div id="videoFileName" class="file-name"></div>
+                </div>
+                <div class="control-panel">
+                    <button id="uploadBtn" class="btn btn-success" style="display:none;">上传并分析</button>
+                </div>
+                <div class="progress-container" style="display:none;">
+                    <div class="progress-bar">
+                        <div id="uploadProgress" class="progress-fill"></div>
+                    </div>
+                    <p id="uploadStatus">准备上传...</p>
+                </div>
+                <div id="videoResults" class="results-container"></div>
+            </div>
+
+            <!-- 训练历史模式 -->
+            <div id="historyMode" class="function-panel">
+                <h2>训练历史</h2>
+                <div class="history-container">
+                    <div id="historyList" class="history-list">
+                        加载中...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
