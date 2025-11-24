@@ -8,7 +8,6 @@ const API_BASE = window.location.origin;
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
-    initTabSwitching();
     initFunctionTabs();
     initCameraControls();
     initVideoUpload();
@@ -19,112 +18,40 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // 检查登录状态
 function checkLoginStatus() {
-    fetch(`${API_BASE}/api/user/info`)
+    fetch(`${API_BASE}/api/user/info`, {
+        credentials: 'include'
+    })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 currentUser = data.user;
                 showMainSection();
+            } else {
+                // 未登录，跳转到登录页
+                window.location.href = '/';
             }
         })
-        .catch(err => console.log('未登录'));
-}
-
-// 登录
-function login() {
-    const username = document.getElementById('loginUsername').value;
-    const password = document.getElementById('loginPassword').value;
-    const messageDiv = document.getElementById('loginMessage');
-
-    if (!username || !password) {
-        showMessage(messageDiv, '请填写用户名和密码', 'error');
-        return;
-    }
-
-    fetch(`${API_BASE}/api/login`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({username, password})
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showMessage(messageDiv, '登录成功！', 'success');
-            currentUser = data.user;
-            setTimeout(() => showMainSection(), 1000);
-        } else {
-            showMessage(messageDiv, data.message, 'error');
-        }
-    })
-    .catch(err => {
-        showMessage(messageDiv, '登录失败: ' + err.message, 'error');
-    });
-}
-
-// 注册
-function register() {
-    const username = document.getElementById('regUsername').value;
-    const password = document.getElementById('regPassword').value;
-    const email = document.getElementById('regEmail').value;
-    const fullName = document.getElementById('regFullName').value;
-    const age = document.getElementById('regAge').value;
-    const studentLevel = document.getElementById('regStudentLevel').value;
-    const schoolName = document.getElementById('regSchoolName').value;
-    const messageDiv = document.getElementById('registerMessage');
-
-    if (!username || !password) {
-        showMessage(messageDiv, '请填写用户名和密码', 'error');
-        return;
-    }
-
-    // 构建请求数据
-    const requestData = {
-        username, 
-        password, 
-        email, 
-        full_name: fullName
-    };
-    
-    // 添加可选字段
-    if (age) requestData.age = parseInt(age);
-    if (studentLevel) requestData.student_level = studentLevel;
-    if (schoolName) requestData.school_name = schoolName;
-
-    fetch(`${API_BASE}/api/register`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(requestData)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showMessage(messageDiv, '注册成功！请登录', 'success');
-            setTimeout(() => {
-                document.querySelector('[data-tab="login"]').click();
-            }, 1500);
-        } else {
-            showMessage(messageDiv, data.message, 'error');
-        }
-    })
-    .catch(err => {
-        showMessage(messageDiv, '注册失败: ' + err.message, 'error');
-    });
+        .catch(err => {
+            console.log('未登录，跳转到登录页');
+            window.location.href = '/';
+        });
 }
 
 // 登出
 function logout() {
-    fetch(`${API_BASE}/api/logout`, {method: 'POST'})
+    fetch(`${API_BASE}/api/logout`, {
+        method: 'POST',
+        credentials: 'include'
+    })
         .then(() => {
             currentUser = null;
             stopCamera();
-            document.getElementById('authSection').style.display = 'block';
-            document.getElementById('mainSection').style.display = 'none';
+            window.location.href = '/';
         });
 }
 
 // 显示主功能区
 function showMainSection() {
-    document.getElementById('authSection').style.display = 'none';
     document.getElementById('mainSection').style.display = 'block';
     
     // 显示欢迎信息，包括学段信息
@@ -156,20 +83,6 @@ function showMessage(element, message, type) {
 }
 
 // ========== 标签页切换 ==========
-
-function initTabSwitching() {
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const tab = this.getAttribute('data-tab');
-            
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
-            
-            this.classList.add('active');
-            document.getElementById(tab + 'Form').classList.add('active');
-        });
-    });
-}
 
 function initFunctionTabs() {
     document.querySelectorAll('.func-tab-btn').forEach(btn => {

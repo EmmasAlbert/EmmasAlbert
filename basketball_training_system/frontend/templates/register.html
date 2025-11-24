@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 - YOLOv8篮球训练辅助系统</title>
+    <link rel="stylesheet" href="/static/css/auth.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-left">
+            <div class="auth-hero">
+                <div class="logo">
+                    <div class="basketball-icon">🏀</div>
+                    <h1>YOLOv8篮球训练辅助系统</h1>
+                </div>
+                <p class="tagline">开始您的智能训练之旅</p>
+                <div class="features">
+                    <div class="feature-item">
+                        <span class="feature-icon">🎓</span>
+                        <div>
+                            <h3>专为中小学生设计</h3>
+                            <p>年龄分段评估标准</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">💪</span>
+                        <div>
+                            <h3>科学训练方法</h3>
+                            <p>基于运动生物力学</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">📈</span>
+                        <div>
+                            <h3>进步可视化</h3>
+                            <p>追踪每一次提升</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="auth-right">
+            <div class="auth-form-container">
+                <h2>创建账号</h2>
+                <p class="subtitle">填写信息开始您的训练</p>
+                
+                <form id="registerForm" onsubmit="handleRegister(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="regUsername">用户名 *</label>
+                            <input type="text" id="regUsername" name="username" required 
+                                   placeholder="请输入用户名">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="regPassword">密码 *</label>
+                            <input type="password" id="regPassword" name="password" required 
+                                   placeholder="请输入密码">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="regFullName">姓名</label>
+                        <input type="text" id="regFullName" name="fullName" 
+                               placeholder="请输入您的姓名">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="regAge">年龄</label>
+                            <input type="number" id="regAge" name="age" min="6" max="18" 
+                                   placeholder="6-18岁">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="regStudentLevel">学段</label>
+                            <select id="regStudentLevel" name="studentLevel">
+                                <option value="">请选择</option>
+                                <option value="primary">小学</option>
+                                <option value="junior">初中</option>
+                                <option value="senior">高中</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="regEmail">邮箱</label>
+                        <input type="email" id="regEmail" name="email" 
+                               placeholder="your@email.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="regSchoolName">学校名称</label>
+                        <input type="text" id="regSchoolName" name="schoolName" 
+                               placeholder="请输入学校名称">
+                    </div>
+                    
+                    <div class="form-footer">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="agree" required>
+                            <span>我同意 <a href="#" class="link">服务条款</a> 和 <a href="#" class="link">隐私政策</a></span>
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">注册</button>
+                    
+                    <div id="registerMessage" class="message"></div>
+                </form>
+                
+                <div class="auth-switch">
+                    <p>已有账号？ <a href="/" class="link">立即登录</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/static/js/auth.js"></script>
+</body>
+</html>

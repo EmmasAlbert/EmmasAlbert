@@ -3,12 +3,10 @@ Flask后端主应用
 """
 import os
 import sys
-import cv2
 import json
-import base64
-import numpy as np
 from pathlib import Path
-from flask import Flask, request, jsonify, session, send_from_directory
+from typing import Dict
+from flask import Flask, request, jsonify, session, send_from_directory, render_template, redirect, url_for
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
@@ -16,17 +14,19 @@ from datetime import datetime, timedelta
 # 添加项目根目录到路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models.basketball_detector import BasketballDetector
-from models.pose_estimator import PoseEstimator
-from models.shot_analyzer import ShotAnalyzer
-from models.hoop_detector import HoopDetector
 from backend.database import Database
 from utils.config_loader import load_config
 from utils.logger import setup_logger
-from utils.video_utils import VideoProcessor, VideoWriter
 
 # 初始化Flask应用
-app = Flask(__name__)
+# 设置正确的模板和静态文件目录
+template_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'templates')
+static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'static')
+
+app = Flask(__name__, 
+            template_folder=template_dir,
+            static_folder=static_dir,
+            static_url_path='/static')
 app.secret_key = 'basketball_training_secret_key_2025'
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB
 CORS(app)
@@ -61,6 +61,13 @@ def init_models():
     
     if basketball_detector is None:
         logger.info("初始化检测模型...")
+        
+        # 延迟导入，避免启动时加载所有依赖
+        from models.basketball_detector import BasketballDetector
+        from models.pose_estimator import PoseEstimator
+        from models.shot_analyzer import ShotAnalyzer
+        from models.hoop_detector import HoopDetector
+        
         basketball_detector = BasketballDetector(
             model_path=config['model']['yolo']['model_path'],
             conf_threshold=config['model']['yolo']['conf_threshold'],
@@ -242,17 +249,23 @@ def process_video():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-def process_video_file(video_path: str, session_id: int, user_info: Dict = None) -> dict:
+def process_video_file(video_path: str, session_id: int, user_info: dict = None) -> dict:
     """
     处理视频文件，进行检测和分析
     
     Args:
         video_path: 视频文件路径
         session_id: 训练记录ID
+        user_info: 用户信息
     
     Returns:
         处理结果字典
     """
+    # 延迟导入
+    import cv2
+    import numpy as np
+    from utils.video_utils import VideoProcessor, VideoWriter
+    
     # 打开视频
     video_processor = VideoProcessor(video_path)
     
@@ -357,6 +370,11 @@ def process_camera_frame():
             return jsonify({'success': False, 'message': '请先登录'}), 401
         
         init_models()
+        
+        # 延迟导入
+        import cv2
+        import numpy as np
+        import base64
         
         # 接收base64编码的图像
         data = request.json
@@ -473,14 +491,24 @@ def get_session_details(session_id):
 
 @app.route('/')
 def index():
-    """主页"""
-    return send_from_directory('../frontend/templates', 'index.html')
+    """主页 - 重定向到登录页"""
+    from flask import render_template
+    return render_template('login.html')
 
+@app.route('/register')
+def register_page():
+    """注册页面"""
+    from flask import render_template
+    return render_template('register.html')
 
-@app.route('/static/<path:path>')
-def send_static(path):
-    """静态文件"""
-    return send_from_directory('../frontend/static', path)
+@app.route('/dashboard')
+def dashboard():
+    """主界面（需要登录）"""
+    from flask import render_template
+    if 'user_id' not in session:
+        from flask import redirect, url_for
+        return redirect(url_for('index'))
+    return render_template('dashboard.html')
 
 
 if __name__ == '__main__':

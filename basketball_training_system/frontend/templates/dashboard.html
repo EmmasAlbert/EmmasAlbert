@@ -17,46 +17,8 @@
             </div>
         </header>
 
-        <!-- 登录/注册表单 -->
-        <div id="authSection" class="auth-section">
-            <div class="auth-container">
-                <div class="auth-tabs">
-                    <button class="tab-btn active" data-tab="login">登录</button>
-                    <button class="tab-btn" data-tab="register">注册</button>
-                </div>
-
-                <!-- 登录表单 -->
-                <div id="loginForm" class="auth-form active">
-                    <h2>用户登录</h2>
-                    <input type="text" id="loginUsername" placeholder="用户名" required>
-                    <input type="password" id="loginPassword" placeholder="密码" required>
-                    <button class="btn btn-primary" onclick="login()">登录</button>
-                    <div id="loginMessage" class="message"></div>
-                </div>
-
-                <!-- 注册表单 -->
-                <div id="registerForm" class="auth-form">
-                    <h2>用户注册</h2>
-                    <input type="text" id="regUsername" placeholder="用户名" required>
-                    <input type="password" id="regPassword" placeholder="密码" required>
-                    <input type="email" id="regEmail" placeholder="邮箱（可选）">
-                    <input type="text" id="regFullName" placeholder="姓名（可选）">
-                    <input type="number" id="regAge" placeholder="年龄（6-18岁）" min="6" max="18">
-                    <select id="regStudentLevel">
-                        <option value="">选择学段（可选）</option>
-                        <option value="primary">小学</option>
-                        <option value="junior">初中</option>
-                        <option value="senior">高中</option>
-                    </select>
-                    <input type="text" id="regSchoolName" placeholder="学校名称（可选）">
-                    <button class="btn btn-primary" onclick="register()">注册</button>
-                    <div id="registerMessage" class="message"></div>
-                </div>
-            </div>
-        </div>
-
         <!-- 主要功能区 -->
-        <div id="mainSection" class="main-section" style="display:none;">
+        <div id="mainSection" class="main-section">
             <!-- 功能选项卡 -->
             <div class="function-tabs">
                 <button class="func-tab-btn active" data-func="camera">📷 实时摄像头</button>
