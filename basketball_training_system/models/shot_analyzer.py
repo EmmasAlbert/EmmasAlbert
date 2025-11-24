@@ -9,22 +9,61 @@ from .pose_estimator import PoseEstimator
 class ShotAnalyzer:
     """投篮动作分析器"""
     
-    def __init__(self, pose_estimator: PoseEstimator, config: Dict = None):
+    def __init__(self, pose_estimator: PoseEstimator, config: Dict = None, user_info: Dict = None):
         """
         初始化投篮分析器
         
         Args:
             pose_estimator: 姿态估计器实例
             config: 配置字典
+            user_info: 用户信息（包含年龄、学段等）
         """
         self.pose_estimator = pose_estimator
         self.config = config or {}
+        self.user_info = user_info or {}
         
-        # 投篮动作阈值
-        self.thresholds = self.config.get('shot_analysis', {}).get('shooting_thresholds', {})
+        # 根据用户信息获取适配的阈值
+        self.thresholds = self._get_adapted_thresholds()
         self.elbow_angle_min = self.thresholds.get('elbow_angle_min', 60)
         self.elbow_angle_max = self.thresholds.get('elbow_angle_max', 110)
         self.release_height_ratio = self.thresholds.get('release_height_ratio', 1.3)
+    
+    def _get_adapted_thresholds(self) -> Dict:
+        """
+        根据用户年龄/学段获取适配的阈值
+        
+        Returns:
+            适配后的阈值字典
+        """
+        default_thresholds = self.config.get('shot_analysis', {}).get('shooting_thresholds', {})
+        
+        # 如果用户信息中有学段信息，使用对应标准
+        student_level = self.user_info.get('student_level')
+        age = self.user_info.get('age')
+        
+        if student_level:
+            # 使用学段对应的标准
+            age_specific = self.config.get('shot_analysis', {}).get('age_specific_thresholds', {})
+            if student_level in age_specific:
+                level_thresholds = age_specific[student_level].copy()
+                # 移除非阈值字段
+                level_thresholds.pop('age_range', None)
+                level_thresholds.pop('feedback_style', None)
+                return level_thresholds
+        
+        elif age:
+            # 根据年龄自动选择标准
+            age_specific = self.config.get('shot_analysis', {}).get('age_specific_thresholds', {})
+            for level, settings in age_specific.items():
+                age_range = settings.get('age_range', [0, 100])
+                if age_range[0] <= age <= age_range[1]:
+                    level_thresholds = settings.copy()
+                    level_thresholds.pop('age_range', None)
+                    level_thresholds.pop('feedback_style', None)
+                    return level_thresholds
+        
+        # 默认使用通用标准
+        return default_thresholds
     
     def analyze_shooting_form(self, keypoints: np.ndarray) -> Dict:
         """
@@ -238,10 +277,36 @@ class ShotAnalyzer:
         }
     
     def _generate_summary(self, average_score: float) -> str:
-        """生成总结评语"""
+        """
+        生成总结评语（根据年龄段调整语气）
+        """
+        # 获取反馈风格
+        student_level = self.user_info.get('student_level')
+        age_specific = self.config.get('shot_analysis', {}).get('age_specific_thresholds', {})
+        
+        feedback_style = "指导为主"  # 默认
+        if student_level and student_level in age_specific:
+            feedback_style = age_specific[student_level].get('feedback_style', '指导为主')
+        
+        # 根据分数和风格生成评语
         if average_score >= 80:
-            return "优秀！投篮动作规范，继续保持。"
+            if feedback_style == "鼓励为主":
+                return "太棒了！🎉 你做得非常好，继续加油！"
+            elif feedback_style == "指导为主":
+                return "优秀！投篮动作规范，继续保持这个水平。"
+            else:
+                return "优秀！投篮动作规范，已达到较高水平。"
         elif average_score >= 60:
-            return "良好，投篮动作基本规范，注意改进细节。"
+            if feedback_style == "鼓励为主":
+                return "不错哦！💪 再多练习就会更好了！"
+            elif feedback_style == "指导为主":
+                return "良好，投篮动作基本规范，注意改进反馈中的细节。"
+            else:
+                return "良好，基本掌握技术要领，需进一步精细化调整。"
         else:
-            return "需要改进，建议重点关注反馈中的问题点。"
+            if feedback_style == "鼓励为主":
+                return "加油！🌟 多多练习，你一定会进步的！"
+            elif feedback_style == "指导为主":
+                return "需要改进，建议重点关注反馈中的问题点，循序渐进。"
+            else:
+                return "需要系统化训练，建议在教练指导下强化基础动作。"

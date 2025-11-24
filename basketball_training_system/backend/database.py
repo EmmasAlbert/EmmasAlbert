@@ -46,6 +46,9 @@ class Database:
                 password_hash TEXT NOT NULL,
                 email TEXT,
                 full_name TEXT,
+                age INTEGER,              -- 年龄（针对中小学生）
+                student_level TEXT,       -- 学段：primary/junior/senior
+                school_name TEXT,         -- 学校名称
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_login TIMESTAMP
             )
@@ -100,7 +103,9 @@ class Database:
     
     # 用户管理方法
     def create_user(self, username: str, password: str, 
-                   email: str = None, full_name: str = None) -> Optional[int]:
+                   email: str = None, full_name: str = None,
+                   age: int = None, student_level: str = None,
+                   school_name: str = None) -> Optional[int]:
         """
         创建新用户
         
@@ -118,10 +123,22 @@ class Database:
         
         try:
             password_hash = self._hash_password(password)
+            
+            # 根据年龄自动判断学段（如果未提供）
+            if age and not student_level:
+                if age <= 12:
+                    student_level = 'primary'
+                elif age <= 15:
+                    student_level = 'junior'
+                else:
+                    student_level = 'senior'
+            
             cursor.execute('''
-                INSERT INTO users (username, password_hash, email, full_name)
-                VALUES (?, ?, ?, ?)
-            ''', (username, password_hash, email, full_name))
+                INSERT INTO users (username, password_hash, email, full_name, 
+                                 age, student_level, school_name)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (username, password_hash, email, full_name, 
+                 age, student_level, school_name))
             
             user_id = cursor.lastrowid
             conn.commit()
@@ -147,7 +164,8 @@ class Database:
         
         password_hash = self._hash_password(password)
         cursor.execute('''
-            SELECT id, username, email, full_name, created_at
+            SELECT id, username, email, full_name, age, student_level, 
+                   school_name, created_at
             FROM users
             WHERE username = ? AND password_hash = ?
         ''', (username, password_hash))
@@ -183,7 +201,8 @@ class Database:
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT id, username, email, full_name, created_at, last_login
+            SELECT id, username, email, full_name, age, student_level,
+                   school_name, created_at, last_login
             FROM users
             WHERE id = ?
         ''', (user_id,))

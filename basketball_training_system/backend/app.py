@@ -90,11 +90,15 @@ def register():
         password = data.get('password')
         email = data.get('email')
         full_name = data.get('full_name')
+        age = data.get('age')
+        student_level = data.get('student_level')
+        school_name = data.get('school_name')
         
         if not username or not password:
             return jsonify({'success': False, 'message': '用户名和密码不能为空'}), 400
         
-        user_id = db.create_user(username, password, email, full_name)
+        user_id = db.create_user(username, password, email, full_name, 
+                                 age, student_level, school_name)
         
         if user_id:
             logger.info(f"新用户注册: {username}")
@@ -205,14 +209,17 @@ def process_video():
         if not video_path or not os.path.exists(video_path):
             return jsonify({'success': False, 'message': '视频文件不存在'}), 400
         
+        # 获取用户信息（用于年龄适配）
+        user_info = db.get_user_by_id(session['user_id'])
+        
         # 创建训练记录
         session_id = db.create_training_session(
             user_id=session['user_id'],
             video_path=video_path
         )
         
-        # 处理视频
-        results = process_video_file(video_path, session_id)
+        # 处理视频（传入用户信息）
+        results = process_video_file(video_path, session_id, user_info)
         
         # 更新训练记录
         db.update_training_session(
@@ -235,7 +242,7 @@ def process_video():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-def process_video_file(video_path: str, session_id: int) -> dict:
+def process_video_file(video_path: str, session_id: int, user_info: Dict = None) -> dict:
     """
     处理视频文件，进行检测和分析
     
@@ -288,6 +295,10 @@ def process_video_file(video_path: str, session_id: int) -> dict:
                 frame = hoop_detector.draw_detections(frame, hoop_detections)
                 frame = pose_estimator.draw_pose(frame, poses)
                 
+                # 创建适配用户年龄的分析器
+                from models.shot_analyzer import ShotAnalyzer
+                user_adapted_analyzer = ShotAnalyzer(pose_estimator, config, user_info)
+                
                 # 分析投篮动作
                 if poses and len(poses) > 0:
                     for pose in poses:
@@ -300,8 +311,8 @@ def process_video_file(video_path: str, session_id: int) -> dict:
                                 (ball['bbox'][1] + ball['bbox'][3]) / 2
                             )
                         
-                        if shot_analyzer.is_shooting_moment(pose['keypoints'], basketball_pos):
-                            analysis = shot_analyzer.analyze_shooting_form(pose['keypoints'])
+                        if user_adapted_analyzer.is_shooting_moment(pose['keypoints'], basketball_pos):
+                            analysis = user_adapted_analyzer.analyze_shooting_form(pose['keypoints'])
                             
                             if analysis['form_score'] > 0:
                                 shot_analyses.append(analysis)
@@ -321,8 +332,13 @@ def process_video_file(video_path: str, session_id: int) -> dict:
         video_processor.release()
         video_writer.release()
     
-    # 生成报告
-    report = shot_analyzer.generate_report(shot_analyses)
+    # 生成报告（使用适配的分析器）
+    if 'user_adapted_analyzer' in locals():
+        report = user_adapted_analyzer.generate_report(shot_analyses)
+    else:
+        from models.shot_analyzer import ShotAnalyzer
+        temp_analyzer = ShotAnalyzer(pose_estimator, config, user_info)
+        report = temp_analyzer.generate_report(shot_analyses)
     
     return {
         'total_shots': report['total_shots'],

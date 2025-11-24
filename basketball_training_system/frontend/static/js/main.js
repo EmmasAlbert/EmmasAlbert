@@ -67,6 +67,9 @@ function register() {
     const password = document.getElementById('regPassword').value;
     const email = document.getElementById('regEmail').value;
     const fullName = document.getElementById('regFullName').value;
+    const age = document.getElementById('regAge').value;
+    const studentLevel = document.getElementById('regStudentLevel').value;
+    const schoolName = document.getElementById('regSchoolName').value;
     const messageDiv = document.getElementById('registerMessage');
 
     if (!username || !password) {
@@ -74,10 +77,23 @@ function register() {
         return;
     }
 
+    // 构建请求数据
+    const requestData = {
+        username, 
+        password, 
+        email, 
+        full_name: fullName
+    };
+    
+    // 添加可选字段
+    if (age) requestData.age = parseInt(age);
+    if (studentLevel) requestData.student_level = studentLevel;
+    if (schoolName) requestData.school_name = schoolName;
+
     fetch(`${API_BASE}/api/register`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({username, password, email, full_name: fullName})
+        body: JSON.stringify(requestData)
     })
     .then(response => response.json())
     .then(data => {
@@ -110,7 +126,22 @@ function logout() {
 function showMainSection() {
     document.getElementById('authSection').style.display = 'none';
     document.getElementById('mainSection').style.display = 'block';
-    document.getElementById('welcomeMsg').textContent = `欢迎, ${currentUser.username}`;
+    
+    // 显示欢迎信息，包括学段信息
+    let welcomeText = `欢迎, ${currentUser.username}`;
+    if (currentUser.age) {
+        welcomeText += ` (${currentUser.age}岁)`;
+    }
+    if (currentUser.student_level) {
+        const levelNames = {
+            'primary': '小学',
+            'junior': '初中',
+            'senior': '高中'
+        };
+        welcomeText += ` [${levelNames[currentUser.student_level]}]`;
+    }
+    
+    document.getElementById('welcomeMsg').textContent = welcomeText;
     document.getElementById('logoutBtn').style.display = 'block';
     document.getElementById('logoutBtn').onclick = logout;
     
