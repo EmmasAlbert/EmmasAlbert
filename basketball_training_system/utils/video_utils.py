@@ -1,0 +1,165 @@
+"""
+视频处理工具
+"""
+import cv2
+import numpy as np
+from pathlib import Path
+from typing import Tuple, Optional
+
+
+class VideoProcessor:
+    """视频处理类"""
+    
+    def __init__(self, video_path: str):
+        """
+        初始化视频处理器
+        
+        Args:
+            video_path: 视频文件路径
+        """
+        self.video_path = video_path
+        self.cap = cv2.VideoCapture(video_path)
+        
+        if not self.cap.isOpened():
+            raise ValueError(f"无法打开视频文件: {video_path}")
+        
+        self.fps = int(self.cap.get(cv2.CAP_PROP_FPS))
+        self.width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    
+    def read_frame(self) -> Tuple[bool, Optional[np.ndarray]]:
+        """
+        读取一帧
+        
+        Returns:
+            (success, frame): 是否成功和帧数据
+        """
+        return self.cap.read()
+    
+    def release(self):
+        """释放视频资源"""
+        if self.cap:
+            self.cap.release()
+    
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.release()
+
+
+class VideoWriter:
+    """视频写入类"""
+    
+    def __init__(self, output_path: str, fps: int, width: int, height: int, 
+                 codec: str = 'mp4v'):
+        """
+        初始化视频写入器
+        
+        Args:
+            output_path: 输出视频路径
+            fps: 帧率
+            width: 视频宽度
+            height: 视频高度
+            codec: 编码器
+        """
+        self.output_path = output_path
+        
+        # 确保输出目录存在
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        
+        fourcc = cv2.VideoWriter_fourcc(*codec)
+        self.writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+        
+        if not self.writer.isOpened():
+            raise ValueError(f"无法创建视频写入器: {output_path}")
+    
+    def write_frame(self, frame: np.ndarray):
+        """
+        写入一帧
+        
+        Args:
+            frame: 帧数据
+        """
+        self.writer.write(frame)
+    
+    def release(self):
+        """释放写入器资源"""
+        if self.writer:
+            self.writer.release()
+    
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.release()
+
+
+def resize_frame(frame: np.ndarray, target_size: Tuple[int, int]) -> np.ndarray:
+    """
+    调整帧大小
+    
+    Args:
+        frame: 输入帧
+        target_size: 目标尺寸 (width, height)
+    
+    Returns:
+        调整后的帧
+    """
+    return cv2.resize(frame, target_size, interpolation=cv2.INTER_LINEAR)
+
+
+def draw_bbox(frame: np.ndarray, bbox: list, label: str, 
+              color: Tuple[int, int, int] = (0, 255, 0), 
+              thickness: int = 2) -> np.ndarray:
+    """
+    在帧上绘制边界框
+    
+    Args:
+        frame: 输入帧
+        bbox: 边界框 [x1, y1, x2, y2]
+        label: 标签文字
+        color: 颜色 (B, G, R)
+        thickness: 线条粗细
+    
+    Returns:
+        绘制后的帧
+    """
+    x1, y1, x2, y2 = map(int, bbox)
+    
+    # 绘制矩形
+    cv2.rectangle(frame, (x1, y1), (x2, y2), color, thickness)
+    
+    # 绘制标签背景
+    label_size, _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
+    cv2.rectangle(frame, (x1, y1 - label_size[1] - 10), 
+                  (x1 + label_size[0], y1), color, -1)
+    
+    # 绘制标签文字
+    cv2.putText(frame, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 
+                0.6, (255, 255, 255), 1)
+    
+    return frame
+
+
+def draw_keypoints(frame: np.ndarray, keypoints: np.ndarray, 
+                   confidence_threshold: float = 0.5) -> np.ndarray:
+    """
+    在帧上绘制关键点
+    
+    Args:
+        frame: 输入帧
+        keypoints: 关键点数组 [N, 3] (x, y, confidence)
+        confidence_threshold: 置信度阈值
+    
+    Returns:
+        绘制后的帧
+    """
+    for i, (x, y, conf) in enumerate(keypoints):
+        if conf > confidence_threshold:
+            cv2.circle(frame, (int(x), int(y)), 5, (0, 255, 0), -1)
+            cv2.putText(frame, str(i), (int(x) + 5, int(y) + 5), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+    
+    return frame
