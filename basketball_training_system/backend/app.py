@@ -19,9 +19,18 @@ from utils.config_loader import load_config
 from utils.logger import setup_logger
 
 # 初始化Flask应用
-# 设置正确的模板和静态文件目录
-template_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'templates')
-static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'static')
+# 设置正确的模板和静态文件目录 - 使用绝对路径
+_current_file = os.path.abspath(__file__)
+_backend_dir = os.path.dirname(_current_file)
+_project_root = os.path.dirname(_backend_dir)
+template_dir = os.path.join(_project_root, 'frontend', 'templates')
+static_dir = os.path.join(_project_root, 'frontend', 'static')
+
+# 打印路径信息用于调试
+print(f"[DEBUG] Template dir: {template_dir}")
+print(f"[DEBUG] Static dir: {static_dir}")
+print(f"[DEBUG] Template dir exists: {os.path.exists(template_dir)}")
+print(f"[DEBUG] Static dir exists: {os.path.exists(static_dir)}")
 
 app = Flask(__name__, 
             template_folder=template_dir,
@@ -487,28 +496,41 @@ def get_session_details(session_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-# ========== 静态文件服务 ==========
+# ========== 页面路由 ==========
 
 @app.route('/')
 def index():
-    """主页 - 重定向到登录页"""
-    from flask import render_template
+    """主页 - 登录页"""
     return render_template('login.html')
 
 @app.route('/register')
 def register_page():
     """注册页面"""
-    from flask import render_template
     return render_template('register.html')
 
 @app.route('/dashboard')
 def dashboard():
     """主界面（需要登录）"""
-    from flask import render_template
     if 'user_id' not in session:
-        from flask import redirect, url_for
         return redirect(url_for('index'))
     return render_template('dashboard.html')
+
+@app.route('/debug/paths')
+def debug_paths():
+    """调试路由 - 显示路径信息"""
+    import os
+    return jsonify({
+        'template_folder': app.template_folder,
+        'static_folder': app.static_folder,
+        'template_exists': os.path.exists(app.template_folder),
+        'static_exists': os.path.exists(app.static_folder),
+        'static_css_exists': os.path.exists(os.path.join(app.static_folder, 'css', 'style.css')),
+        'static_js_exists': os.path.exists(os.path.join(app.static_folder, 'js', 'main.js')),
+        'static_css_auth_exists': os.path.exists(os.path.join(app.static_folder, 'css', 'auth.css')),
+        'static_js_auth_exists': os.path.exists(os.path.join(app.static_folder, 'js', 'auth.js')),
+        'working_dir': os.getcwd(),
+        'file_location': __file__
+    })
 
 
 if __name__ == '__main__':
