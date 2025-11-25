@@ -99,7 +99,8 @@ pip install -r requirements.txt
 
 ### 启动服务器
 ```bash
-python backend/app.py
+cd basketball_training_system
+python run.py
 ```
 
 服务器默认运行在: `http://localhost:5000`
@@ -298,22 +299,46 @@ if poses:
 
 ## 🐛 常见问题
 
-### Q1: 模型下载失败？
+### Q1: 注册/登录时报错 "table users has no column named age"？
+A: 这是因为数据库结构需要更新。请执行以下步骤：
+
+**方法1：运行修复脚本（推荐）**
+```bash
+python fix_database.py
+```
+
+**方法2：删除旧数据库重新开始**
+```bash
+# Windows
+del data\basketball_training.db
+
+# Linux/Mac
+rm data/basketball_training.db
+```
+
+然后重新运行 `python run.py`
+
+### Q2: 模型下载失败？
 A: 首次运行时，系统会自动从Ultralytics下载YOLOv8模型。如果下载失败，可以手动下载模型文件放到 `models/` 目录。
 
-### Q2: 摄像头无法打开？
+### Q3: 静态文件404错误（CSS/JS加载失败）？
+A: 请确保使用最新代码。如果问题仍然存在，请检查：
+1. 确保从正确的目录启动：`cd basketball_training_system && python run.py`
+2. 检查 `frontend/static/` 目录是否存在
+
+### Q4: 摄像头无法打开？
 A: 请检查：
 1. 浏览器是否有摄像头权限
 2. 是否有其他应用占用摄像头
 3. 使用HTTPS或localhost访问
 
-### Q3: 检测效果不佳？
+### Q5: 检测效果不佳？
 A: 可以调整以下参数：
 - 增加 `conf_threshold` 以提高检测精度
 - 调整光线条件，确保场景明亮
 - 使用更高分辨率的摄像头
 
-### Q4: GPU加速如何设置？
+### Q6: GPU加速如何设置？
 A: 在 `config.yaml` 中设置 `device: "cuda"`，需要安装CUDA和cuDNN。
 
 ## 🔐 安全说明
