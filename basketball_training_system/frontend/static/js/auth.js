@@ -148,4 +148,19 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    
+    // 初始化角色选择切换
+    const roleInputs = document.querySelectorAll('input[name="role"]');
+    roleInputs.forEach(input => {
+        input.addEventListener('change', toggleRoleFields);
+    });
 });
+
+// 切换角色字段显示
+function toggleRoleFields() {
+    const studentFields = document.getElementById('studentFields');
+    if (studentFields) {
+        const isStudent = document.querySelector('input[name="role"]:checked')?.value === 'student';
+        studentFields.style.display = isStudent ? 'block' : 'none';
+    }
+}

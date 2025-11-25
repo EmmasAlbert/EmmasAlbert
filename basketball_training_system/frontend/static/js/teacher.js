@@ -107,7 +107,7 @@ async function searchStudents() {
     const query = document.getElementById('searchInput').value.trim();
     
     if (query.length < 2) {
-        alert('请输入至少2个字符');
+        showNotification('请输入至少2个字符', 'warning');
         return;
     }
     
@@ -271,7 +271,7 @@ function getLevelName(level) {
 
 function openFeedbackModal() {
     if (!selectedStudent) {
-        alert('请先选择一个学生');
+        showNotification('请先选择一个学生', 'warning');
         return;
     }
     
@@ -289,7 +289,7 @@ async function submitFeedback() {
     const feedbackText = document.getElementById('feedbackText').value.trim();
     
     if (!feedbackText) {
-        alert('请输入反馈内容');
+        showNotification('请输入反馈内容', 'warning');
         return;
     }
     
@@ -307,13 +307,48 @@ async function submitFeedback() {
         const result = await response.json();
         
         if (result.success) {
-            alert('反馈已提交！');
+            showNotification('反馈已提交！', 'success');
             closeFeedbackModal();
         } else {
-            alert('提交失败: ' + result.message);
+            showNotification('提交失败: ' + result.message, 'error');
         }
     } catch (err) {
         console.error('提交反馈错误:', err);
-        alert('提交失败，请重试');
+        showNotification('提交失败，请重试', 'error');
     }
+}
+
+// 显示通知
+function showNotification(message, type) {
+    const existing = document.querySelector('.notification');
+    if (existing) existing.remove();
+    
+    const colors = {
+        success: '#28a745',
+        error: '#dc3545',
+        warning: '#ffc107'
+    };
+    
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 25px;
+        border-radius: 8px;
+        color: ${type === 'warning' ? '#333' : 'white'};
+        font-weight: 500;
+        z-index: 9999;
+        animation: slideIn 0.3s ease;
+        background: ${colors[type] || colors.error};
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
 }

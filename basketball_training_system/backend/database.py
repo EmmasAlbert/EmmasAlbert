@@ -136,13 +136,47 @@ class Database:
             )
         ''')
         
-        # 插入默认学校（方便测试）
-        cursor.execute('''
-            INSERT OR IGNORE INTO schools (school_code, school_name, province, city)
-            VALUES ('DEMO001', '示范学校', '广东省', '广州市')
-        ''')
-        
         conn.commit()
+        conn.close()
+        
+        # 初始化示例数据（仅在开发环境）
+        self._init_demo_data()
+    
+    def _init_demo_data(self):
+        """初始化示例数据（用于演示和测试）"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        # 检查是否已有学校数据
+        cursor.execute('SELECT COUNT(*) FROM schools')
+        if cursor.fetchone()[0] == 0:
+            # 插入示例学校
+            cursor.execute('''
+                INSERT INTO schools (school_code, school_name, province, city)
+                VALUES ('DEMO001', '示范学校', '广东省', '广州市')
+            ''')
+            
+            # 获取学校ID
+            school_id = cursor.lastrowid
+            
+            # 插入示例班级
+            cursor.execute('''
+                INSERT INTO classes (school_id, class_name, grade)
+                VALUES (?, '一班', '初一')
+            ''', (school_id,))
+            
+            cursor.execute('''
+                INSERT INTO classes (school_id, class_name, grade)
+                VALUES (?, '二班', '初一')
+            ''', (school_id,))
+            
+            cursor.execute('''
+                INSERT INTO classes (school_id, class_name, grade)
+                VALUES (?, '一班', '初二')
+            ''', (school_id,))
+            
+            conn.commit()
+        
         conn.close()
     
     def _migrate_users_table(self, cursor):

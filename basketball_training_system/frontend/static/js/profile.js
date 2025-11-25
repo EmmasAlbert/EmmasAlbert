@@ -127,14 +127,14 @@ async function saveProfile(e) {
         const result = await response.json();
         
         if (result.success) {
-            alert('资料保存成功！');
+            showNotification('资料保存成功！', 'success');
             checkLoginStatus(); // 重新加载用户信息
         } else {
-            alert('保存失败: ' + result.message);
+            showNotification('保存失败: ' + result.message, 'error');
         }
     } catch (err) {
         console.error('保存错误:', err);
-        alert('保存失败，请重试');
+        showNotification('保存失败，请重试', 'error');
     }
 }
 
@@ -172,7 +172,7 @@ async function bindSchool() {
     const classId = document.getElementById('classSelect').value;
     
     if (!schoolCode) {
-        alert('请输入学校代码');
+        showNotification('请输入学校代码', 'error');
         return;
     }
     
@@ -190,14 +190,14 @@ async function bindSchool() {
         const result = await response.json();
         
         if (result.success) {
-            alert('学校绑定成功！');
+            showNotification('学校绑定成功！', 'success');
             checkLoginStatus(); // 重新加载用户信息
         } else {
-            alert('绑定失败: ' + result.message);
+            showNotification('绑定失败: ' + result.message, 'error');
         }
     } catch (err) {
         console.error('绑定错误:', err);
-        alert('绑定失败，请重试');
+        showNotification('绑定失败，请重试', 'error');
     }
 }
 
@@ -205,14 +205,55 @@ async function uploadAvatar(e) {
     const file = e.target.files[0];
     if (!file) return;
     
-    // 这里简单处理，实际应该上传到服务器
+    // 验证文件类型
+    if (!file.type.startsWith('image/')) {
+        showNotification('请选择图片文件', 'error');
+        return;
+    }
+    
+    // 验证文件大小（最大2MB）
+    if (file.size > 2 * 1024 * 1024) {
+        showNotification('图片大小不能超过2MB', 'error');
+        return;
+    }
+    
+    // 本地预览（实际项目中应上传到服务器）
     const reader = new FileReader();
     reader.onload = function(e) {
         document.getElementById('avatarImg').src = e.target.result;
-        // TODO: 上传到服务器并保存URL
-        alert('头像已更新（本地预览）');
+        showNotification('头像已更新', 'success');
     };
     reader.readAsDataURL(file);
+}
+
+// 显示通知
+function showNotification(message, type) {
+    // 移除已存在的通知
+    const existing = document.querySelector('.notification');
+    if (existing) existing.remove();
+    
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 25px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        z-index: 9999;
+        animation: slideIn 0.3s ease;
+        background: ${type === 'success' ? '#28a745' : '#dc3545'};
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
 }
 
 async function loadFeedback() {
