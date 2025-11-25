@@ -24,10 +24,10 @@
                         </div>
                     </div>
                     <div class="feature-item">
-                        <span class="feature-icon">💪</span>
+                        <span class="feature-icon">👨‍🏫</span>
                         <div>
-                            <h3>科学训练方法</h3>
-                            <p>基于运动生物力学</p>
+                            <h3>教师学生协同</h3>
+                            <p>教师可查看学生训练数据</p>
                         </div>
                     </div>
                     <div class="feature-item">
@@ -47,6 +47,24 @@
                 <p class="subtitle">填写信息开始您的训练</p>
                 
                 <form id="registerForm" onsubmit="handleRegister(event)">
+                    <!-- 角色选择 -->
+                    <div class="role-selector">
+                        <label class="role-option">
+                            <input type="radio" name="role" value="student" checked onchange="toggleRoleFields()">
+                            <span class="role-card">
+                                <span class="role-icon">🎒</span>
+                                <span class="role-name">学生</span>
+                            </span>
+                        </label>
+                        <label class="role-option">
+                            <input type="radio" name="role" value="teacher" onchange="toggleRoleFields()">
+                            <span class="role-card">
+                                <span class="role-icon">👨‍🏫</span>
+                                <span class="role-name">教师</span>
+                            </span>
+                        </label>
+                    </div>
+                    
                     <div class="form-row">
                         <div class="form-group">
                             <label for="regUsername">用户名 *</label>
@@ -67,34 +85,52 @@
                                placeholder="请输入您的姓名">
                     </div>
                     
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="regAge">年龄</label>
-                            <input type="number" id="regAge" name="age" min="6" max="18" 
-                                   placeholder="6-18岁">
+                    <!-- 学生专用字段 -->
+                    <div id="studentFields">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="regAge">年龄</label>
+                                <input type="number" id="regAge" name="age" min="6" max="18" 
+                                       placeholder="6-18岁">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="regStudentLevel">学段</label>
+                                <select id="regStudentLevel" name="studentLevel">
+                                    <option value="">请选择</option>
+                                    <option value="primary">小学</option>
+                                    <option value="junior">初中</option>
+                                    <option value="senior">高中</option>
+                                </select>
+                            </div>
                         </div>
                         
                         <div class="form-group">
-                            <label for="regStudentLevel">学段</label>
-                            <select id="regStudentLevel" name="studentLevel">
-                                <option value="">请选择</option>
-                                <option value="primary">小学</option>
-                                <option value="junior">初中</option>
-                                <option value="senior">高中</option>
-                            </select>
+                            <label for="regStudentId">学生证号</label>
+                            <input type="text" id="regStudentId" name="studentId" 
+                                   placeholder="请输入学生证号">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="regEmail">邮箱</label>
+                            <input type="email" id="regEmail" name="email" 
+                                   placeholder="your@email.com">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="regPhone">联系电话</label>
+                            <input type="tel" id="regPhone" name="phone" 
+                                   placeholder="请输入联系电话">
                         </div>
                     </div>
                     
                     <div class="form-group">
-                        <label for="regEmail">邮箱</label>
-                        <input type="email" id="regEmail" name="email" 
-                               placeholder="your@email.com">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="regSchoolName">学校名称</label>
-                        <input type="text" id="regSchoolName" name="schoolName" 
-                               placeholder="请输入学校名称">
+                        <label for="regSchoolCode">学校代码</label>
+                        <input type="text" id="regSchoolCode" name="schoolCode" 
+                               placeholder="请输入学校代码（如：DEMO001）">
+                        <small class="hint">输入学校代码后可绑定所属学校和班级</small>
                     </div>
                     
                     <div class="form-footer">
@@ -117,5 +153,11 @@
     </div>
     
     <script src="/static/js/auth.js"></script>
+    <script>
+        function toggleRoleFields() {
+            const isStudent = document.querySelector('input[name="role"]:checked').value === 'student';
+            document.getElementById('studentFields').style.display = isStudent ? 'block' : 'none';
+        }
+    </script>
 </body>
 </html>

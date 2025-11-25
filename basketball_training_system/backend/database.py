@@ -1,5 +1,6 @@
 """
 数据库管理模块
+支持教师-学生角色系统
 """
 import sqlite3
 import hashlib
@@ -38,19 +39,50 @@ class Database:
         conn = self._get_connection()
         cursor = conn.cursor()
         
-        # 用户表
+        # 学校表
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS schools (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                school_code TEXT UNIQUE NOT NULL,
+                school_name TEXT NOT NULL,
+                province TEXT,
+                city TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # 班级表
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS classes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                school_id INTEGER NOT NULL,
+                class_name TEXT NOT NULL,
+                grade TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (school_id) REFERENCES schools (id)
+            )
+        ''')
+        
+        # 用户表（支持教师和学生角色）
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
+                role TEXT DEFAULT 'student',
                 email TEXT,
                 full_name TEXT,
-                age INTEGER,              -- 年龄（针对中小学生）
-                student_level TEXT,       -- 学段：primary/junior/senior
-                school_name TEXT,         -- 学校名称
+                age INTEGER,
+                student_level TEXT,
+                school_id INTEGER,
+                class_id INTEGER,
+                student_id TEXT,
+                avatar_url TEXT,
+                phone TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_login TIMESTAMP
+                last_login TIMESTAMP,
+                FOREIGN KEY (school_id) REFERENCES schools (id),
+                FOREIGN KEY (class_id) REFERENCES classes (id)
             )
         ''')
         
@@ -89,6 +121,27 @@ class Database:
             )
         ''')
         
+        # 教师反馈表
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS teacher_feedback (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                teacher_id INTEGER NOT NULL,
+                student_id INTEGER NOT NULL,
+                session_id INTEGER,
+                feedback_text TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (teacher_id) REFERENCES users (id),
+                FOREIGN KEY (student_id) REFERENCES users (id),
+                FOREIGN KEY (session_id) REFERENCES training_sessions (id)
+            )
+        ''')
+        
+        # 插入默认学校（方便测试）
+        cursor.execute('''
+            INSERT OR IGNORE INTO schools (school_code, school_name, province, city)
+            VALUES ('DEMO001', '示范学校', '广东省', '广州市')
+        ''')
+        
         conn.commit()
         conn.close()
     
@@ -104,51 +157,119 @@ class Database:
         
         # 需要添加的列及其定义
         new_columns = {
+            'role': "TEXT DEFAULT 'student'",
             'age': 'INTEGER',
             'student_level': 'TEXT',
-            'school_name': 'TEXT',
+            'school_id': 'INTEGER',
+            'class_id': 'INTEGER',
+            'student_id': 'TEXT',
+            'avatar_url': 'TEXT',
+            'phone': 'TEXT',
             'full_name': 'TEXT',
             'email': 'TEXT',
             'last_login': 'TIMESTAMP'
         }
         
         # 添加缺失的列
-        for column_name, column_type in new_columns.items():
+        for column_name, column_def in new_columns.items():
             if column_name not in existing_columns:
                 try:
-                    cursor.execute(f'ALTER TABLE users ADD COLUMN {column_name} {column_type}')
+                    cursor.execute(f'ALTER TABLE users ADD COLUMN {column_name} {column_def}')
                     print(f"✓ 数据库迁移: 添加列 users.{column_name}")
                 except sqlite3.OperationalError as e:
                     print(f"✗ 数据库迁移失败: {column_name} - {e}")
     
     def _hash_password(self, password: str) -> str:
-        """
-        对密码进行哈希
-        
-        Args:
-            password: 明文密码
-        
-        Returns:
-            哈希后的密码
-        """
+        """对密码进行哈希"""
         return hashlib.sha256(password.encode()).hexdigest()
     
-    # 用户管理方法
+    # ========== 学校管理 ==========
+    
+    def create_school(self, school_code: str, school_name: str,
+                     province: str = None, city: str = None) -> Optional[int]:
+        """创建学校"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute('''
+                INSERT INTO schools (school_code, school_name, province, city)
+                VALUES (?, ?, ?, ?)
+            ''', (school_code, school_name, province, city))
+            
+            school_id = cursor.lastrowid
+            conn.commit()
+            return school_id
+        except sqlite3.IntegrityError:
+            return None
+        finally:
+            conn.close()
+    
+    def get_school_by_code(self, school_code: str) -> Optional[Dict]:
+        """根据学校代码获取学校信息"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT * FROM schools WHERE school_code = ?', (school_code,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        return dict(row) if row else None
+    
+    def get_all_schools(self) -> List[Dict]:
+        """获取所有学校"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT * FROM schools ORDER BY school_name')
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return [dict(row) for row in rows]
+    
+    # ========== 班级管理 ==========
+    
+    def create_class(self, school_id: int, class_name: str, grade: str = None) -> int:
+        """创建班级"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO classes (school_id, class_name, grade)
+            VALUES (?, ?, ?)
+        ''', (school_id, class_name, grade))
+        
+        class_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        
+        return class_id
+    
+    def get_classes_by_school(self, school_id: int) -> List[Dict]:
+        """获取学校的所有班级"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT * FROM classes WHERE school_id = ?
+            ORDER BY grade, class_name
+        ''', (school_id,))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return [dict(row) for row in rows]
+    
+    # ========== 用户管理 ==========
+    
     def create_user(self, username: str, password: str, 
+                   role: str = 'student',
                    email: str = None, full_name: str = None,
                    age: int = None, student_level: str = None,
-                   school_name: str = None) -> Optional[int]:
+                   school_id: int = None, class_id: int = None,
+                   student_id: str = None, phone: str = None) -> Optional[int]:
         """
-        创建新用户
-        
-        Args:
-            username: 用户名
-            password: 密码
-            email: 邮箱
-            full_name: 全名
-        
-        Returns:
-            用户ID，如果用户名已存在则返回None
+        创建新用户（教师或学生）
         """
         conn = self._get_connection()
         cursor = conn.cursor()
@@ -166,11 +287,11 @@ class Database:
                     student_level = 'senior'
             
             cursor.execute('''
-                INSERT INTO users (username, password_hash, email, full_name, 
-                                 age, student_level, school_name)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (username, password_hash, email, full_name, 
-                 age, student_level, school_name))
+                INSERT INTO users (username, password_hash, role, email, full_name, 
+                                 age, student_level, school_id, class_id, student_id, phone)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (username, password_hash, role, email, full_name, 
+                 age, student_level, school_id, class_id, student_id, phone))
             
             user_id = cursor.lastrowid
             conn.commit()
@@ -181,25 +302,17 @@ class Database:
             conn.close()
     
     def verify_user(self, username: str, password: str) -> Optional[Dict]:
-        """
-        验证用户登录
-        
-        Args:
-            username: 用户名
-            password: 密码
-        
-        Returns:
-            用户信息字典，如果验证失败则返回None
-        """
+        """验证用户登录"""
         conn = self._get_connection()
         cursor = conn.cursor()
         
         password_hash = self._hash_password(password)
         cursor.execute('''
-            SELECT id, username, email, full_name, age, student_level, 
-                   school_name, created_at
-            FROM users
-            WHERE username = ? AND password_hash = ?
+            SELECT u.*, s.school_name, s.school_code, c.class_name, c.grade
+            FROM users u
+            LEFT JOIN schools s ON u.school_id = s.id
+            LEFT JOIN classes c ON u.class_id = c.id
+            WHERE u.username = ? AND u.password_hash = ?
         ''', (username, password_hash))
         
         row = cursor.fetchone()
@@ -213,6 +326,8 @@ class Database:
             conn.commit()
             
             user_info = dict(row)
+            # 移除密码哈希
+            user_info.pop('password_hash', None)
             conn.close()
             return user_info
         
@@ -220,45 +335,197 @@ class Database:
         return None
     
     def get_user_by_id(self, user_id: int) -> Optional[Dict]:
-        """
-        根据ID获取用户信息
-        
-        Args:
-            user_id: 用户ID
-        
-        Returns:
-            用户信息字典
-        """
+        """根据ID获取用户信息"""
         conn = self._get_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT id, username, email, full_name, age, student_level,
-                   school_name, created_at, last_login
-            FROM users
-            WHERE id = ?
+            SELECT u.*, s.school_name, s.school_code, c.class_name, c.grade
+            FROM users u
+            LEFT JOIN schools s ON u.school_id = s.id
+            LEFT JOIN classes c ON u.class_id = c.id
+            WHERE u.id = ?
         ''', (user_id,))
         
         row = cursor.fetchone()
         conn.close()
         
-        return dict(row) if row else None
+        if row:
+            user_info = dict(row)
+            user_info.pop('password_hash', None)
+            return user_info
+        return None
     
-    # 训练记录管理方法
+    def update_user_profile(self, user_id: int, **kwargs) -> bool:
+        """更新用户资料"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        allowed_fields = ['email', 'full_name', 'age', 'student_level', 
+                         'school_id', 'class_id', 'student_id', 'avatar_url', 'phone']
+        
+        updates = []
+        params = []
+        
+        for field, value in kwargs.items():
+            if field in allowed_fields and value is not None:
+                updates.append(f"{field} = ?")
+                params.append(value)
+        
+        if not updates:
+            return False
+        
+        params.append(user_id)
+        query = f"UPDATE users SET {', '.join(updates)} WHERE id = ?"
+        cursor.execute(query, params)
+        conn.commit()
+        conn.close()
+        
+        return True
+    
+    def bind_school(self, user_id: int, school_code: str, class_id: int = None) -> bool:
+        """绑定学校"""
+        school = self.get_school_by_code(school_code)
+        if not school:
+            return False
+        
+        return self.update_user_profile(user_id, school_id=school['id'], class_id=class_id)
+    
+    # ========== 教师功能 ==========
+    
+    def get_students_by_school(self, school_id: int, class_id: int = None) -> List[Dict]:
+        """获取学校/班级的学生列表"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        if class_id:
+            cursor.execute('''
+                SELECT u.*, c.class_name, c.grade
+                FROM users u
+                LEFT JOIN classes c ON u.class_id = c.id
+                WHERE u.school_id = ? AND u.class_id = ? AND u.role = 'student'
+                ORDER BY u.full_name, u.username
+            ''', (school_id, class_id))
+        else:
+            cursor.execute('''
+                SELECT u.*, c.class_name, c.grade
+                FROM users u
+                LEFT JOIN classes c ON u.class_id = c.id
+                WHERE u.school_id = ? AND u.role = 'student'
+                ORDER BY c.grade, c.class_name, u.full_name, u.username
+            ''', (school_id,))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        result = []
+        for row in rows:
+            user_info = dict(row)
+            user_info.pop('password_hash', None)
+            result.append(user_info)
+        
+        return result
+    
+    def search_students(self, school_id: int, query: str) -> List[Dict]:
+        """搜索学生（按学号或姓名）"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        search_pattern = f"%{query}%"
+        cursor.execute('''
+            SELECT u.*, c.class_name, c.grade,
+                   (SELECT COUNT(*) FROM training_sessions ts WHERE ts.user_id = u.id) as session_count,
+                   (SELECT AVG(average_score) FROM training_sessions ts WHERE ts.user_id = u.id) as avg_score
+            FROM users u
+            LEFT JOIN classes c ON u.class_id = c.id
+            WHERE u.school_id = ? AND u.role = 'student'
+              AND (u.student_id LIKE ? OR u.full_name LIKE ? OR u.username LIKE ?)
+            ORDER BY u.full_name, u.username
+        ''', (school_id, search_pattern, search_pattern, search_pattern))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        result = []
+        for row in rows:
+            user_info = dict(row)
+            user_info.pop('password_hash', None)
+            result.append(user_info)
+        
+        return result
+    
+    def get_student_stats(self, student_id: int) -> Dict:
+        """获取学生训练统计"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        # 获取总训练次数和平均分
+        cursor.execute('''
+            SELECT 
+                COUNT(*) as total_sessions,
+                SUM(total_shots) as total_shots,
+                AVG(average_score) as avg_score,
+                MAX(average_score) as best_score
+            FROM training_sessions
+            WHERE user_id = ?
+        ''', (student_id,))
+        
+        stats = dict(cursor.fetchone())
+        
+        # 获取最近5次训练
+        cursor.execute('''
+            SELECT * FROM training_sessions
+            WHERE user_id = ?
+            ORDER BY session_date DESC
+            LIMIT 5
+        ''', (student_id,))
+        
+        stats['recent_sessions'] = [dict(row) for row in cursor.fetchall()]
+        
+        conn.close()
+        return stats
+    
+    def add_teacher_feedback(self, teacher_id: int, student_id: int, 
+                            feedback_text: str, session_id: int = None) -> int:
+        """添加教师反馈"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO teacher_feedback (teacher_id, student_id, session_id, feedback_text)
+            VALUES (?, ?, ?, ?)
+        ''', (teacher_id, student_id, session_id, feedback_text))
+        
+        feedback_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        
+        return feedback_id
+    
+    def get_student_feedback(self, student_id: int, limit: int = 10) -> List[Dict]:
+        """获取学生收到的教师反馈"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT tf.*, u.full_name as teacher_name, u.username as teacher_username
+            FROM teacher_feedback tf
+            JOIN users u ON tf.teacher_id = u.id
+            WHERE tf.student_id = ?
+            ORDER BY tf.created_at DESC
+            LIMIT ?
+        ''', (student_id, limit))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return [dict(row) for row in rows]
+    
+    # ========== 训练记录管理 ==========
+    
     def create_training_session(self, user_id: int, video_path: str = None,
                                 duration: int = 0, notes: str = None) -> int:
-        """
-        创建训练记录
-        
-        Args:
-            user_id: 用户ID
-            video_path: 视频路径
-            duration: 训练时长（秒）
-            notes: 备注
-        
-        Returns:
-            训练记录ID
-        """
+        """创建训练记录"""
         conn = self._get_connection()
         cursor = conn.cursor()
         
@@ -277,15 +544,7 @@ class Database:
                                total_shots: int = None,
                                successful_shots: int = None,
                                average_score: float = None):
-        """
-        更新训练记录
-        
-        Args:
-            session_id: 训练记录ID
-            total_shots: 总投篮次数
-            successful_shots: 成功投篮次数
-            average_score: 平均分数
-        """
+        """更新训练记录"""
         conn = self._get_connection()
         cursor = conn.cursor()
         
@@ -314,14 +573,7 @@ class Database:
     
     def add_shot_analysis(self, session_id: int, timestamp: float,
                          analysis_result: Dict):
-        """
-        添加投篮分析记录
-        
-        Args:
-            session_id: 训练记录ID
-            timestamp: 时间戳
-            analysis_result: 分析结果字典
-        """
+        """添加投篮分析记录"""
         conn = self._get_connection()
         cursor = conn.cursor()
         
@@ -345,16 +597,7 @@ class Database:
         conn.close()
     
     def get_user_training_history(self, user_id: int, limit: int = 10) -> List[Dict]:
-        """
-        获取用户训练历史
-        
-        Args:
-            user_id: 用户ID
-            limit: 返回记录数量限制
-        
-        Returns:
-            训练记录列表
-        """
+        """获取用户训练历史"""
         conn = self._get_connection()
         cursor = conn.cursor()
         
@@ -371,15 +614,7 @@ class Database:
         return [dict(row) for row in rows]
     
     def get_session_analysis(self, session_id: int) -> List[Dict]:
-        """
-        获取训练记录的所有分析结果
-        
-        Args:
-            session_id: 训练记录ID
-        
-        Returns:
-            分析结果列表
-        """
+        """获取训练记录的所有分析结果"""
         conn = self._get_connection()
         cursor = conn.cursor()
         

@@ -55,7 +55,7 @@ function showMainSection() {
     document.getElementById('mainSection').style.display = 'block';
     
     // 显示欢迎信息，包括学段信息
-    let welcomeText = `欢迎, ${currentUser.username}`;
+    let welcomeText = `欢迎, ${currentUser.full_name || currentUser.username}`;
     if (currentUser.age) {
         welcomeText += ` (${currentUser.age}岁)`;
     }
@@ -69,8 +69,16 @@ function showMainSection() {
     }
     
     document.getElementById('welcomeMsg').textContent = welcomeText;
-    document.getElementById('logoutBtn').style.display = 'block';
+    document.getElementById('logoutBtn').style.display = 'inline-block';
     document.getElementById('logoutBtn').onclick = logout;
+    
+    // 显示个人资料链接
+    document.getElementById('profileLink').style.display = 'inline-block';
+    
+    // 如果是教师，显示教师控制台链接
+    if (currentUser.role === 'teacher') {
+        document.getElementById('teacherLink').style.display = 'inline-block';
+    }
     
     loadTrainingHistory();
 }

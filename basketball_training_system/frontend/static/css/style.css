@@ -42,6 +42,19 @@ body {
     gap: 15px;
 }
 
+.nav-link {
+    color: white;
+    text-decoration: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    transition: background 0.3s;
+    font-size: 14px;
+}
+
+.nav-link:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
 /* 认证部分 */
 .auth-section {
     padding: 50px;

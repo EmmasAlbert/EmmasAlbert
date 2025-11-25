@@ -27,8 +27,15 @@ async function handleLogin(event) {
         
         if (data.success) {
             showMessage(messageDiv, '登录成功！正在跳转...', 'success');
+            
+            // 根据角色跳转到不同页面
+            const role = data.user.role;
             setTimeout(() => {
-                window.location.href = '/dashboard';
+                if (role === 'teacher') {
+                    window.location.href = '/teacher';
+                } else {
+                    window.location.href = '/dashboard';
+                }
             }, 1000);
         } else {
             showMessage(messageDiv, data.message || '登录失败', 'error');
@@ -46,11 +53,14 @@ async function handleRegister(event) {
     const username = document.getElementById('regUsername').value.trim();
     const password = document.getElementById('regPassword').value;
     const fullName = document.getElementById('regFullName').value.trim();
-    const age = document.getElementById('regAge').value;
-    const studentLevel = document.getElementById('regStudentLevel').value;
     const email = document.getElementById('regEmail').value.trim();
-    const schoolName = document.getElementById('regSchoolName').value.trim();
+    const phone = document.getElementById('regPhone')?.value.trim();
+    const schoolCode = document.getElementById('regSchoolCode')?.value.trim();
     const messageDiv = document.getElementById('registerMessage');
+    
+    // 获取角色
+    const roleInput = document.querySelector('input[name="role"]:checked');
+    const role = roleInput ? roleInput.value : 'student';
     
     if (!username || !password) {
         showMessage(messageDiv, '用户名和密码不能为空', 'error');
@@ -60,14 +70,25 @@ async function handleRegister(event) {
     // 构建请求数据
     const requestData = {
         username,
-        password
+        password,
+        role
     };
     
     if (fullName) requestData.full_name = fullName;
-    if (age) requestData.age = parseInt(age);
-    if (studentLevel) requestData.student_level = studentLevel;
     if (email) requestData.email = email;
-    if (schoolName) requestData.school_name = schoolName;
+    if (phone) requestData.phone = phone;
+    if (schoolCode) requestData.school_code = schoolCode;
+    
+    // 学生专用字段
+    if (role === 'student') {
+        const age = document.getElementById('regAge')?.value;
+        const studentLevel = document.getElementById('regStudentLevel')?.value;
+        const studentId = document.getElementById('regStudentId')?.value.trim();
+        
+        if (age) requestData.age = parseInt(age);
+        if (studentLevel) requestData.student_level = studentLevel;
+        if (studentId) requestData.student_id = studentId;
+    }
     
     try {
         const response = await fetch(`${API_BASE}/api/register`, {

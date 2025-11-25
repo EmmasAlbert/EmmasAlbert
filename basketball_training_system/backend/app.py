@@ -101,25 +101,53 @@ def init_models():
 
 @app.route('/api/register', methods=['POST'])
 def register():
-    """用户注册"""
+    """用户注册（支持教师和学生）"""
     try:
         data = request.json
         username = data.get('username')
         password = data.get('password')
+        role = data.get('role', 'student')  # 默认为学生
         email = data.get('email')
         full_name = data.get('full_name')
         age = data.get('age')
         student_level = data.get('student_level')
-        school_name = data.get('school_name')
+        school_code = data.get('school_code')
+        class_id = data.get('class_id')
+        student_id = data.get('student_id')
+        phone = data.get('phone')
         
         if not username or not password:
             return jsonify({'success': False, 'message': '用户名和密码不能为空'}), 400
         
-        user_id = db.create_user(username, password, email, full_name, 
-                                 age, student_level, school_name)
+        # 验证角色
+        if role not in ['student', 'teacher']:
+            return jsonify({'success': False, 'message': '角色无效'}), 400
+        
+        # 如果提供了学校代码，查找学校ID
+        school_id = None
+        if school_code:
+            school = db.get_school_by_code(school_code)
+            if school:
+                school_id = school['id']
+            else:
+                return jsonify({'success': False, 'message': '学校代码不存在'}), 400
+        
+        user_id = db.create_user(
+            username=username, 
+            password=password, 
+            role=role,
+            email=email, 
+            full_name=full_name,
+            age=age, 
+            student_level=student_level,
+            school_id=school_id,
+            class_id=class_id,
+            student_id=student_id,
+            phone=phone
+        )
         
         if user_id:
-            logger.info(f"新用户注册: {username}")
+            logger.info(f"新用户注册: {username} (角色: {role})")
             return jsonify({'success': True, 'message': '注册成功', 'user_id': user_id})
         else:
             return jsonify({'success': False, 'message': '用户名已存在'}), 400
@@ -145,7 +173,8 @@ def login():
         if user_info:
             session['user_id'] = user_info['id']
             session['username'] = user_info['username']
-            logger.info(f"用户登录: {username}")
+            session['role'] = user_info.get('role', 'student')
+            logger.info(f"用户登录: {username} (角色: {user_info.get('role')})")
             return jsonify({'success': True, 'message': '登录成功', 'user': user_info})
         else:
             return jsonify({'success': False, 'message': '用户名或密码错误'}), 401
@@ -170,6 +199,290 @@ def get_user_info():
     
     user_info = db.get_user_by_id(session['user_id'])
     return jsonify({'success': True, 'user': user_info})
+
+
+@app.route('/api/user/profile', methods=['PUT'])
+def update_profile():
+    """更新用户个人资料"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': '请先登录'}), 401
+        
+        data = request.json
+        
+        # 允许更新的字段
+        allowed_fields = ['email', 'full_name', 'age', 'phone', 
+                         'student_id', 'avatar_url']
+        
+        update_data = {k: v for k, v in data.items() if k in allowed_fields}
+        
+        if update_data:
+            db.update_user_profile(session['user_id'], **update_data)
+            logger.info(f"用户更新资料: {session['username']}")
+            return jsonify({'success': True, 'message': '资料更新成功'})
+        else:
+            return jsonify({'success': False, 'message': '没有可更新的字段'}), 400
+            
+    except Exception as e:
+        logger.error(f"更新资料错误: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/user/bind-school', methods=['POST'])
+def bind_school():
+    """绑定学校"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': '请先登录'}), 401
+        
+        data = request.json
+        school_code = data.get('school_code')
+        class_id = data.get('class_id')
+        
+        if not school_code:
+            return jsonify({'success': False, 'message': '请提供学校代码'}), 400
+        
+        success = db.bind_school(session['user_id'], school_code, class_id)
+        
+        if success:
+            logger.info(f"用户绑定学校: {session['username']} -> {school_code}")
+            return jsonify({'success': True, 'message': '学校绑定成功'})
+        else:
+            return jsonify({'success': False, 'message': '学校代码无效'}), 400
+            
+    except Exception as e:
+        logger.error(f"绑定学校错误: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ========== 学校和班级API ==========
+
+@app.route('/api/schools', methods=['GET'])
+def get_schools():
+    """获取所有学校列表"""
+    schools = db.get_all_schools()
+    return jsonify({'success': True, 'schools': schools})
+
+
+@app.route('/api/schools/<school_code>/classes', methods=['GET'])
+def get_school_classes(school_code):
+    """获取学校的班级列表"""
+    school = db.get_school_by_code(school_code)
+    if not school:
+        return jsonify({'success': False, 'message': '学校不存在'}), 404
+    
+    classes = db.get_classes_by_school(school['id'])
+    return jsonify({'success': True, 'classes': classes})
+
+
+@app.route('/api/schools', methods=['POST'])
+def create_school():
+    """创建学校（仅管理员）"""
+    try:
+        data = request.json
+        school_code = data.get('school_code')
+        school_name = data.get('school_name')
+        province = data.get('province')
+        city = data.get('city')
+        
+        if not school_code or not school_name:
+            return jsonify({'success': False, 'message': '学校代码和名称不能为空'}), 400
+        
+        school_id = db.create_school(school_code, school_name, province, city)
+        
+        if school_id:
+            return jsonify({'success': True, 'message': '学校创建成功', 'school_id': school_id})
+        else:
+            return jsonify({'success': False, 'message': '学校代码已存在'}), 400
+            
+    except Exception as e:
+        logger.error(f"创建学校错误: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/classes', methods=['POST'])
+def create_class():
+    """创建班级（教师可用）"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': '请先登录'}), 401
+        
+        user = db.get_user_by_id(session['user_id'])
+        if user.get('role') != 'teacher':
+            return jsonify({'success': False, 'message': '只有教师可以创建班级'}), 403
+        
+        data = request.json
+        school_id = data.get('school_id') or user.get('school_id')
+        class_name = data.get('class_name')
+        grade = data.get('grade')
+        
+        if not school_id or not class_name:
+            return jsonify({'success': False, 'message': '学校ID和班级名称不能为空'}), 400
+        
+        class_id = db.create_class(school_id, class_name, grade)
+        return jsonify({'success': True, 'message': '班级创建成功', 'class_id': class_id})
+        
+    except Exception as e:
+        logger.error(f"创建班级错误: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ========== 教师功能API ==========
+
+@app.route('/api/teacher/students', methods=['GET'])
+def get_teacher_students():
+    """获取教师所属学校的学生列表"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': '请先登录'}), 401
+        
+        user = db.get_user_by_id(session['user_id'])
+        if user.get('role') != 'teacher':
+            return jsonify({'success': False, 'message': '只有教师可以访问此功能'}), 403
+        
+        if not user.get('school_id'):
+            return jsonify({'success': False, 'message': '请先绑定学校'}), 400
+        
+        class_id = request.args.get('class_id', type=int)
+        students = db.get_students_by_school(user['school_id'], class_id)
+        
+        return jsonify({'success': True, 'students': students})
+        
+    except Exception as e:
+        logger.error(f"获取学生列表错误: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/teacher/search', methods=['GET'])
+def search_students():
+    """搜索学生（按学号或姓名）"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': '请先登录'}), 401
+        
+        user = db.get_user_by_id(session['user_id'])
+        if user.get('role') != 'teacher':
+            return jsonify({'success': False, 'message': '只有教师可以访问此功能'}), 403
+        
+        if not user.get('school_id'):
+            return jsonify({'success': False, 'message': '请先绑定学校'}), 400
+        
+        query = request.args.get('q', '')
+        if len(query) < 2:
+            return jsonify({'success': False, 'message': '搜索关键词至少2个字符'}), 400
+        
+        students = db.search_students(user['school_id'], query)
+        
+        return jsonify({'success': True, 'students': students})
+        
+    except Exception as e:
+        logger.error(f"搜索学生错误: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/teacher/student/<int:student_id>/stats', methods=['GET'])
+def get_student_stats(student_id):
+    """获取学生训练统计"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': '请先登录'}), 401
+        
+        user = db.get_user_by_id(session['user_id'])
+        if user.get('role') != 'teacher':
+            return jsonify({'success': False, 'message': '只有教师可以访问此功能'}), 403
+        
+        # 验证学生属于同一学校
+        student = db.get_user_by_id(student_id)
+        if not student or student.get('school_id') != user.get('school_id'):
+            return jsonify({'success': False, 'message': '无权访问该学生数据'}), 403
+        
+        stats = db.get_student_stats(student_id)
+        stats['student'] = student
+        
+        return jsonify({'success': True, 'stats': stats})
+        
+    except Exception as e:
+        logger.error(f"获取学生统计错误: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/teacher/student/<int:student_id>/history', methods=['GET'])
+def get_student_training_history(student_id):
+    """获取学生训练历史"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': '请先登录'}), 401
+        
+        user = db.get_user_by_id(session['user_id'])
+        if user.get('role') != 'teacher':
+            return jsonify({'success': False, 'message': '只有教师可以访问此功能'}), 403
+        
+        # 验证学生属于同一学校
+        student = db.get_user_by_id(student_id)
+        if not student or student.get('school_id') != user.get('school_id'):
+            return jsonify({'success': False, 'message': '无权访问该学生数据'}), 403
+        
+        limit = request.args.get('limit', 20, type=int)
+        history = db.get_user_training_history(student_id, limit)
+        
+        return jsonify({'success': True, 'history': history, 'student': student})
+        
+    except Exception as e:
+        logger.error(f"获取学生训练历史错误: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/teacher/feedback', methods=['POST'])
+def add_feedback():
+    """添加教师反馈"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': '请先登录'}), 401
+        
+        user = db.get_user_by_id(session['user_id'])
+        if user.get('role') != 'teacher':
+            return jsonify({'success': False, 'message': '只有教师可以添加反馈'}), 403
+        
+        data = request.json
+        student_id = data.get('student_id')
+        session_id = data.get('session_id')
+        feedback_text = data.get('feedback')
+        
+        if not student_id or not feedback_text:
+            return jsonify({'success': False, 'message': '学生ID和反馈内容不能为空'}), 400
+        
+        # 验证学生属于同一学校
+        student = db.get_user_by_id(student_id)
+        if not student or student.get('school_id') != user.get('school_id'):
+            return jsonify({'success': False, 'message': '无权给该学生添加反馈'}), 403
+        
+        feedback_id = db.add_teacher_feedback(
+            session['user_id'], student_id, feedback_text, session_id
+        )
+        
+        logger.info(f"教师 {session['username']} 给学生 {student_id} 添加反馈")
+        return jsonify({'success': True, 'message': '反馈添加成功', 'feedback_id': feedback_id})
+        
+    except Exception as e:
+        logger.error(f"添加反馈错误: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/student/feedback', methods=['GET'])
+def get_my_feedback():
+    """获取学生收到的教师反馈"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': '请先登录'}), 401
+        
+        limit = request.args.get('limit', 10, type=int)
+        feedback = db.get_student_feedback(session['user_id'], limit)
+        
+        return jsonify({'success': True, 'feedback': feedback})
+        
+    except Exception as e:
+        logger.error(f"获取反馈错误: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
 # ========== 视频处理API ==========
@@ -516,6 +829,25 @@ def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('index'))
     return render_template('dashboard.html')
+
+@app.route('/profile')
+def profile_page():
+    """个人资料页面"""
+    if 'user_id' not in session:
+        return redirect(url_for('index'))
+    return render_template('profile.html')
+
+@app.route('/teacher')
+def teacher_dashboard():
+    """教师控制台"""
+    if 'user_id' not in session:
+        return redirect(url_for('index'))
+    
+    user = db.get_user_by_id(session['user_id'])
+    if user.get('role') != 'teacher':
+        return redirect(url_for('dashboard'))
+    
+    return render_template('teacher.html')
 
 @app.route('/outputs/<path:filename>')
 def serve_output(filename):
