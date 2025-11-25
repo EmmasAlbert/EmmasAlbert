@@ -54,6 +54,9 @@ class Database:
             )
         ''')
         
+        # 数据库迁移：检查并添加缺失的列
+        self._migrate_users_table(cursor)
+        
         # 训练记录表
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS training_sessions (
@@ -88,6 +91,33 @@ class Database:
         
         conn.commit()
         conn.close()
+    
+    def _migrate_users_table(self, cursor):
+        """
+        数据库迁移：为旧版本的users表添加缺失的列
+        """
+        # 获取现有列
+        cursor.execute("PRAGMA table_info(users)")
+        existing_columns = {row[1] for row in cursor.fetchall()}
+        
+        # 需要添加的列及其定义
+        new_columns = {
+            'age': 'INTEGER',
+            'student_level': 'TEXT',
+            'school_name': 'TEXT',
+            'full_name': 'TEXT',
+            'email': 'TEXT',
+            'last_login': 'TIMESTAMP'
+        }
+        
+        # 添加缺失的列
+        for column_name, column_type in new_columns.items():
+            if column_name not in existing_columns:
+                try:
+                    cursor.execute(f'ALTER TABLE users ADD COLUMN {column_name} {column_type}')
+                    print(f"数据库迁移: 添加列 users.{column_name}")
+                except sqlite3.OperationalError:
+                    pass  # 列可能已存在
     
     def _hash_password(self, password: str) -> str:
         """
