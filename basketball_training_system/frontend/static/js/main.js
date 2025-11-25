@@ -296,32 +296,87 @@ function displayVideoResults(results) {
     const resultsDiv = document.getElementById('videoResults');
     const report = results.report;
     
+    // 显示视频分析区域
+    const analysisSection = document.getElementById('videoAnalysisSection');
+    analysisSection.style.display = 'grid';
+    
+    // 如果有输出视频，加载它
+    if (results.output_video) {
+        const videoEl = document.getElementById('analyzedVideo');
+        videoEl.src = `/outputs/${results.output_video.split('/').pop()}`;
+        videoEl.load();
+    }
+    
+    // 更新统计数据
+    document.getElementById('totalShots').textContent = report.total_shots;
+    document.getElementById('validShots').textContent = report.valid_shots || 0;
+    document.getElementById('avgScore').textContent = report.average_score.toFixed(1);
+    
+    // 计算平均肘部角度
+    if (report.shots && report.shots.length > 0) {
+        const avgAngle = report.shots.reduce((sum, shot) => sum + (shot.elbow_angle || 0), 0) / report.shots.length;
+        document.getElementById('avgElbowAngle').textContent = avgAngle.toFixed(1) + '°';
+    }
+    
     let scoreClass = 'score-needs-improvement';
     if (report.average_score >= 80) scoreClass = 'score-excellent';
     else if (report.average_score >= 60) scoreClass = 'score-good';
     
+    // 生成投篮时间线
+    let shotTimelineHtml = '';
+    if (report.shots && report.shots.length > 0) {
+        shotTimelineHtml = `
+        <div class="detail-analysis-card">
+            <h3>⏱️ 投篮时间线</h3>
+            <div class="shot-timeline">
+                ${report.shots.map((shot, index) => {
+                    let badgeClass = 'needs-improvement';
+                    if (shot.score >= 80) badgeClass = 'excellent';
+                    else if (shot.score >= 60) badgeClass = 'good';
+                    return `<span class="shot-badge ${badgeClass}">
+                        #${index + 1}: ${shot.score.toFixed(0)}分
+                    </span>`;
+                }).join('')}
+            </div>
+        </div>
+        `;
+    }
+    
+    // 生成建议列表
+    let suggestionsHtml = '';
+    if (report.common_issues && report.common_issues.length > 0) {
+        suggestionsHtml = `
+        <div class="suggestions-card">
+            <h3>💡 改进建议</h3>
+            ${report.common_issues.map(issue => `
+                <div class="suggestion-item">
+                    <span class="suggestion-icon">📌</span>
+                    <span class="suggestion-text">${issue}</span>
+                </div>
+            `).join('')}
+        </div>
+        `;
+    }
+    
     resultsDiv.innerHTML = `
         <div class="result-card">
-            <h3>分析报告</h3>
+            <h3>📋 分析报告</h3>
             <p><strong>总投篮次数:</strong> ${report.total_shots}</p>
             <p><strong>有效投篮:</strong> ${report.valid_shots}</p>
             <p><strong>平均得分:</strong> <span class="score-badge ${scoreClass}">${report.average_score.toFixed(1)}分</span></p>
             <p><strong>评语:</strong> ${report.summary}</p>
         </div>
         
-        ${report.common_issues && report.common_issues.length > 0 ? `
-        <div class="result-card">
-            <h3>常见问题</h3>
-            ${report.common_issues.map(issue => `<p>• ${issue}</p>`).join('')}
-        </div>
-        ` : ''}
+        ${shotTimelineHtml}
         
         <div class="result-card">
-            <h3>得分分布</h3>
-            <p>优秀 (≥80分): ${report.score_distribution.excellent} 次</p>
-            <p>良好 (60-79分): ${report.score_distribution.good} 次</p>
-            <p>需改进 (<60分): ${report.score_distribution.needs_improvement} 次</p>
+            <h3>📊 得分分布</h3>
+            <p>✅ 优秀 (≥80分): <strong>${report.score_distribution.excellent}</strong> 次</p>
+            <p>👍 良好 (60-79分): <strong>${report.score_distribution.good}</strong> 次</p>
+            <p>📈 需改进 (<60分): <strong>${report.score_distribution.needs_improvement}</strong> 次</p>
         </div>
+        
+        ${suggestionsHtml}
     `;
 }
 

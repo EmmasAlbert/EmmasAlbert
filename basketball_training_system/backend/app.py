@@ -517,6 +517,12 @@ def dashboard():
         return redirect(url_for('index'))
     return render_template('dashboard.html')
 
+@app.route('/outputs/<path:filename>')
+def serve_output(filename):
+    """提供输出文件（处理后的视频等）"""
+    output_dir = os.path.join(_project_root, 'outputs', 'videos')
+    return send_from_directory(output_dir, filename)
+
 @app.route('/debug/paths')
 def debug_paths():
     """调试路由 - 显示路径信息"""

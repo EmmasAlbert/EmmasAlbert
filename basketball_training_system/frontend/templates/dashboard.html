@@ -72,6 +72,42 @@
                     </div>
                     <p id="uploadStatus">准备上传...</p>
                 </div>
+                
+                <!-- 视频预览和分析结果并排显示 -->
+                <div id="videoAnalysisSection" class="video-analysis-section" style="display:none;">
+                    <div class="video-preview-container">
+                        <h3>📹 分析视频预览</h3>
+                        <video id="analyzedVideo" controls class="analyzed-video">
+                            您的浏览器不支持视频播放
+                        </video>
+                    </div>
+                    <div class="real-time-stats">
+                        <h3>📊 实时分析统计</h3>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <span class="stat-icon">🏀</span>
+                                <span class="stat-label">投篮次数</span>
+                                <span id="totalShots" class="stat-value">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-icon">✅</span>
+                                <span class="stat-label">有效投篮</span>
+                                <span id="validShots" class="stat-value">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-icon">⭐</span>
+                                <span class="stat-label">平均得分</span>
+                                <span id="avgScore" class="stat-value">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-icon">📐</span>
+                                <span class="stat-label">平均肘部角度</span>
+                                <span id="avgElbowAngle" class="stat-value">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <div id="videoResults" class="results-container"></div>
             </div>
 

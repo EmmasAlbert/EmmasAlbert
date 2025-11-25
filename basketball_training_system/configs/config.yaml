@@ -13,13 +13,14 @@ model:
     model_path: "models/yolov8n.pt"  # 使用nano版本，可改为yolov8s.pt, yolov8m.pt等
     conf_threshold: 0.25  # 置信度阈值
     iou_threshold: 0.45   # NMS IOU阈值
-    device: "cuda"        # cuda或cpu
+    device: "cpu"         # cuda或cpu（如果没有GPU使用cpu）
     
   # 姿态估计设置
   pose:
     model_path: "models/yolov8n-pose.pt"
     conf_threshold: 0.3
     keypoint_threshold: 0.5
+    device: "cpu"  # cuda或cpu（如果没有GPU使用cpu）
 
 # 数据路径
 paths:
