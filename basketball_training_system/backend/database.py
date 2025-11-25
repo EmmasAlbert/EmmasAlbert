@@ -100,6 +100,8 @@ class Database:
         cursor.execute("PRAGMA table_info(users)")
         existing_columns = {row[1] for row in cursor.fetchall()}
         
+        print(f"[DEBUG] 数据库现有列: {existing_columns}")
+        
         # 需要添加的列及其定义
         new_columns = {
             'age': 'INTEGER',
@@ -115,9 +117,9 @@ class Database:
             if column_name not in existing_columns:
                 try:
                     cursor.execute(f'ALTER TABLE users ADD COLUMN {column_name} {column_type}')
-                    print(f"数据库迁移: 添加列 users.{column_name}")
-                except sqlite3.OperationalError:
-                    pass  # 列可能已存在
+                    print(f"✓ 数据库迁移: 添加列 users.{column_name}")
+                except sqlite3.OperationalError as e:
+                    print(f"✗ 数据库迁移失败: {column_name} - {e}")
     
     def _hash_password(self, password: str) -> str:
         """

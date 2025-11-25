@@ -44,8 +44,10 @@ CORS(app)
 config = load_config()
 logger = setup_logger('backend', log_file='logs/backend.log')
 
-# 初始化数据库
-db = Database()
+# 初始化数据库 - 使用绝对路径
+_db_path = os.path.join(_project_root, 'data', 'basketball_training.db')
+print(f"[DEBUG] Database path: {_db_path}")
+db = Database(db_path=_db_path)
 
 # 初始化模型（延迟加载）
 basketball_detector = None
