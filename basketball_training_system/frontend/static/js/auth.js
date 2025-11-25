@@ -90,6 +90,16 @@ async function handleRegister(event) {
         if (studentId) requestData.student_id = studentId;
     }
     
+    // 教师邀请码
+    if (role === 'teacher') {
+        const teacherInviteCode = document.getElementById('regTeacherInviteCode')?.value.trim();
+        if (!teacherInviteCode) {
+            showMessage(messageDiv, '教师注册需要提供邀请码', 'error');
+            return;
+        }
+        requestData.teacher_invite_code = teacherInviteCode;
+    }
+    
     try {
         const response = await fetch(`${API_BASE}/api/register`, {
             method: 'POST',
@@ -159,8 +169,13 @@ document.addEventListener('DOMContentLoaded', function() {
 // 切换角色字段显示
 function toggleRoleFields() {
     const studentFields = document.getElementById('studentFields');
+    const teacherFields = document.getElementById('teacherFields');
+    const isStudent = document.querySelector('input[name="role"]:checked')?.value === 'student';
+    
     if (studentFields) {
-        const isStudent = document.querySelector('input[name="role"]:checked')?.value === 'student';
         studentFields.style.display = isStudent ? 'block' : 'none';
+    }
+    if (teacherFields) {
+        teacherFields.style.display = isStudent ? 'none' : 'block';
     }
 }

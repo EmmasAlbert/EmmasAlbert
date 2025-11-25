@@ -115,6 +115,7 @@ def register():
         class_id = data.get('class_id')
         student_id = data.get('student_id')
         phone = data.get('phone')
+        teacher_invite_code = data.get('teacher_invite_code')  # 教师邀请码
         
         if not username or not password:
             return jsonify({'success': False, 'message': '用户名和密码不能为空'}), 400
@@ -122,6 +123,21 @@ def register():
         # 验证角色
         if role not in ['student', 'teacher']:
             return jsonify({'success': False, 'message': '角色无效'}), 400
+        
+        # 教师注册必须验证邀请码
+        invite_code_info = None
+        if role == 'teacher':
+            if not teacher_invite_code:
+                return jsonify({'success': False, 'message': '教师注册需要提供邀请码'}), 400
+            
+            # 验证邀请码
+            invite_code_info = db.verify_teacher_invite_code(teacher_invite_code)
+            if not invite_code_info:
+                return jsonify({'success': False, 'message': '邀请码无效或已被使用'}), 400
+            
+            # 如果邀请码关联了学校，使用该学校
+            if invite_code_info.get('school_id') and not school_code:
+                school_code = invite_code_info.get('school_code')
         
         # 如果提供了学校代码，查找学校ID
         school_id = None
@@ -147,6 +163,10 @@ def register():
         )
         
         if user_id:
+            # 如果是教师，标记邀请码已使用
+            if role == 'teacher' and invite_code_info:
+                db.use_teacher_invite_code(teacher_invite_code, user_id)
+            
             logger.info(f"新用户注册: {username} (角色: {role})")
             return jsonify({'success': True, 'message': '注册成功', 'user_id': user_id})
         else:

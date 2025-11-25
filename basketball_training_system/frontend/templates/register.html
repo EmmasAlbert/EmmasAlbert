@@ -65,6 +65,20 @@
                         </label>
                     </div>
                     
+                    <!-- 教师邀请码（仅教师可见） -->
+                    <div id="teacherFields" style="display: none;">
+                        <div class="form-group invite-code-group">
+                            <label for="regTeacherInviteCode">教师邀请码 *</label>
+                            <input type="text" id="regTeacherInviteCode" name="teacherInviteCode" 
+                                   placeholder="请输入教师邀请码">
+                            <small class="hint">
+                                🔒 教师注册需要邀请码验证<br>
+                                请向学校管理员或其他教师获取邀请码<br>
+                                默认测试邀请码: <code>TEACHER2025</code> 或 <code>DEMO_TEACHER</code>
+                            </small>
+                        </div>
+                    </div>
+                    
                     <div class="form-row">
                         <div class="form-group">
                             <label for="regUsername">用户名 *</label>

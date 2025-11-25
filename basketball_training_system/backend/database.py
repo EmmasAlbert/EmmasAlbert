@@ -136,6 +136,24 @@ class Database:
             )
         ''')
         
+        # 教师邀请码表
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS teacher_invite_codes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code TEXT UNIQUE NOT NULL,
+                school_id INTEGER,
+                created_by INTEGER,
+                used_by INTEGER,
+                is_used BOOLEAN DEFAULT 0,
+                expires_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                used_at TIMESTAMP,
+                FOREIGN KEY (school_id) REFERENCES schools (id),
+                FOREIGN KEY (created_by) REFERENCES users (id),
+                FOREIGN KEY (used_by) REFERENCES users (id)
+            )
+        ''')
+        
         conn.commit()
         conn.close()
         
@@ -176,6 +194,36 @@ class Database:
             ''', (school_id,))
             
             conn.commit()
+        
+        # 检查是否已有教师邀请码
+        cursor.execute('SELECT COUNT(*) FROM teacher_invite_codes')
+        if cursor.fetchone()[0] == 0:
+            # 插入默认教师邀请码（用于演示）
+            # 在实际环境中，邀请码应该由管理员生成
+            import secrets
+            
+            # 获取示范学校ID
+            cursor.execute("SELECT id FROM schools WHERE school_code = 'DEMO001'")
+            school_row = cursor.fetchone()
+            school_id = school_row[0] if school_row else None
+            
+            # 生成默认邀请码
+            default_codes = [
+                ('TEACHER2025', school_id),  # 通用教师邀请码
+                ('DEMO_TEACHER', school_id),  # 示范教师邀请码
+            ]
+            
+            for code, sid in default_codes:
+                try:
+                    cursor.execute('''
+                        INSERT INTO teacher_invite_codes (code, school_id, is_used)
+                        VALUES (?, ?, 0)
+                    ''', (code, sid))
+                except Exception:
+                    pass  # 忽略重复插入错误
+            
+            conn.commit()
+            print("✓ 已创建默认教师邀请码: TEACHER2025, DEMO_TEACHER")
         
         conn.close()
     
@@ -658,6 +706,131 @@ class Database:
             ORDER BY timestamp
         ''', (session_id,))
         
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return [dict(row) for row in rows]
+    
+    # ========== 教师邀请码管理 ==========
+    
+    def verify_teacher_invite_code(self, code: str) -> Optional[Dict]:
+        """
+        验证教师邀请码
+        
+        Returns:
+            Dict with code info if valid, None if invalid
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT tic.*, s.school_name, s.school_code
+            FROM teacher_invite_codes tic
+            LEFT JOIN schools s ON tic.school_id = s.id
+            WHERE tic.code = ? AND tic.is_used = 0
+              AND (tic.expires_at IS NULL OR tic.expires_at > CURRENT_TIMESTAMP)
+        ''', (code,))
+        
+        row = cursor.fetchone()
+        conn.close()
+        
+        return dict(row) if row else None
+    
+    def use_teacher_invite_code(self, code: str, user_id: int) -> bool:
+        """
+        使用教师邀请码（标记为已使用）
+        
+        Args:
+            code: 邀请码
+            user_id: 使用者的用户ID
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute('''
+                UPDATE teacher_invite_codes
+                SET is_used = 1, used_by = ?, used_at = CURRENT_TIMESTAMP
+                WHERE code = ? AND is_used = 0
+            ''', (user_id, code))
+            
+            affected = cursor.rowcount
+            conn.commit()
+            conn.close()
+            
+            return affected > 0
+        except Exception as e:
+            conn.close()
+            print(f"使用邀请码失败: {e}")
+            return False
+    
+    def create_teacher_invite_code(self, school_id: int = None, 
+                                   created_by: int = None,
+                                   expires_days: int = 30) -> str:
+        """
+        创建新的教师邀请码
+        
+        Args:
+            school_id: 关联的学校ID
+            created_by: 创建者的用户ID（管理员或教师）
+            expires_days: 有效期（天数），默认30天
+            
+        Returns:
+            生成的邀请码
+        """
+        import secrets
+        from datetime import datetime, timedelta
+        
+        # 生成随机邀请码
+        code = f"TCH{secrets.token_hex(4).upper()}"
+        
+        # 计算过期时间
+        expires_at = datetime.now() + timedelta(days=expires_days)
+        
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO teacher_invite_codes (code, school_id, created_by, expires_at)
+            VALUES (?, ?, ?, ?)
+        ''', (code, school_id, created_by, expires_at))
+        
+        conn.commit()
+        conn.close()
+        
+        return code
+    
+    def get_teacher_invite_codes(self, school_id: int = None, 
+                                include_used: bool = False) -> List[Dict]:
+        """获取教师邀请码列表"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        query = '''
+            SELECT tic.*, s.school_name, 
+                   u1.username as creator_username,
+                   u2.username as user_username
+            FROM teacher_invite_codes tic
+            LEFT JOIN schools s ON tic.school_id = s.id
+            LEFT JOIN users u1 ON tic.created_by = u1.id
+            LEFT JOIN users u2 ON tic.used_by = u2.id
+            WHERE 1=1
+        '''
+        params = []
+        
+        if school_id:
+            query += ' AND tic.school_id = ?'
+            params.append(school_id)
+        
+        if not include_used:
+            query += ' AND tic.is_used = 0'
+        
+        query += ' ORDER BY tic.created_at DESC'
+        
+        cursor.execute(query, params)
         rows = cursor.fetchall()
         conn.close()
         
