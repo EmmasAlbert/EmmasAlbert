@@ -6,8 +6,13 @@ import os
 import sys
 from pathlib import Path
 
-# 添加项目根目录到路径
-sys.path.insert(0, str(Path(__file__).parent))
+# 添加项目根目录到路径（使用绝对路径）
+_project_root = str(Path(__file__).parent.absolute())
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+    
+# 同时设置工作目录为项目根目录
+os.chdir(_project_root)
 
 from backend.app import app
 from utils.config_loader import load_config

@@ -11,8 +11,10 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 
-# 添加项目根目录到路径
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# 添加项目根目录到路径（确保在任何情况下都能正确导入）
+_project_root = str(Path(__file__).parent.parent.absolute())
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
 
 from backend.database import Database
 from utils.config_loader import load_config
