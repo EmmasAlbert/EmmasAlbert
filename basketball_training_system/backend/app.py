@@ -71,30 +71,45 @@ def init_models():
     global basketball_detector, pose_estimator, shot_analyzer, hoop_detector
     
     if basketball_detector is None:
-        logger.info("初始化检测模型...")
-        
-        # 延迟导入，避免启动时加载所有依赖
-        from models.basketball_detector import BasketballDetector
-        from models.pose_estimator import PoseEstimator
-        from models.shot_analyzer import ShotAnalyzer
-        from models.hoop_detector import HoopDetector
-        
-        basketball_detector = BasketballDetector(
-            model_path=config['model']['yolo']['model_path'],
-            conf_threshold=config['model']['yolo']['conf_threshold'],
-            device=config['model']['yolo']['device']
-        )
-        
-        pose_estimator = PoseEstimator(
-            model_path=config['model']['pose']['model_path'],
-            conf_threshold=config['model']['pose']['conf_threshold'],
-            device=config['model']['pose']['device']
-        )
-        
-        shot_analyzer = ShotAnalyzer(pose_estimator, config)
-        hoop_detector = HoopDetector()
-        
-        logger.info("模型初始化完成")
+        try:
+            logger.info("初始化检测模型...")
+            
+            # 延迟导入，避免启动时加载所有依赖
+            from models.basketball_detector import BasketballDetector
+            from models.pose_estimator import PoseEstimator
+            from models.shot_analyzer import ShotAnalyzer
+            from models.hoop_detector import HoopDetector
+            
+            basketball_detector = BasketballDetector(
+                model_path=config['model']['yolo']['model_path'],
+                conf_threshold=config['model']['yolo']['conf_threshold'],
+                device=config['model']['yolo']['device']
+            )
+            logger.info(f"✓ 篮球检测器初始化成功")
+            
+            pose_estimator = PoseEstimator(
+                model_path=config['model']['pose']['model_path'],
+                conf_threshold=config['model']['pose']['conf_threshold'],
+                device=config['model']['pose']['device']
+            )
+            logger.info(f"✓ 姿态估计器初始化成功")
+            
+            hoop_detector = HoopDetector()
+            logger.info(f"✓ 篮筐检测器初始化成功")
+            
+            shot_analyzer = ShotAnalyzer(pose_estimator, config)
+            logger.info(f"✓ 投篮分析器初始化成功")
+            
+            logger.info("✓ 所有模型初始化完成")
+            
+        except Exception as e:
+            logger.error(f"模型初始化失败: {e}", exc_info=True)
+            # 重置所有模型为None
+            basketball_detector = None
+            pose_estimator = None
+            shot_analyzer = None
+            hoop_detector = None
+            raise RuntimeError(f"模型初始化失败: {e}")
 
 
 # ========== 用户认证API ==========
@@ -552,7 +567,18 @@ def process_video():
         if 'user_id' not in session:
             return jsonify({'success': False, 'message': '请先登录'}), 401
         
+        # 初始化模型
         init_models()
+        
+        # 验证所有模型都已初始化
+        if basketball_detector is None or pose_estimator is None or hoop_detector is None or shot_analyzer is None:
+            error_msg = "模型初始化失败，请检查YOLOv8模型文件是否正确下载"
+            logger.error(error_msg)
+            logger.error(f"basketball_detector: {basketball_detector is not None}")
+            logger.error(f"pose_estimator: {pose_estimator is not None}")
+            logger.error(f"hoop_detector: {hoop_detector is not None}")
+            logger.error(f"shot_analyzer: {shot_analyzer is not None}")
+            return jsonify({'success': False, 'message': error_msg}), 500
         
         data = request.json
         video_path = data.get('video_path')
@@ -589,8 +615,8 @@ def process_video():
         })
         
     except Exception as e:
-        logger.error(f"视频处理错误: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        logger.error(f"视频处理错误: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': f"处理失败: {str(e)}"}), 500
 
 
 def process_video_file(video_path: str, session_id: int, user_info: dict = None) -> dict:
