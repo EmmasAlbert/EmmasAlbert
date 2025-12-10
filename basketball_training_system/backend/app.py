@@ -901,7 +901,24 @@ def teacher_dashboard():
 def serve_output(filename):
     """提供输出文件（处理后的视频等）"""
     output_dir = os.path.join(_project_root, 'outputs', 'videos')
-    return send_from_directory(output_dir, filename)
+    
+    # 确定MIME类型
+    if filename.lower().endswith('.mp4'):
+        mimetype = 'video/mp4'
+    elif filename.lower().endswith('.avi'):
+        mimetype = 'video/x-msvideo'
+    elif filename.lower().endswith('.mov'):
+        mimetype = 'video/quicktime'
+    elif filename.lower().endswith('.mkv'):
+        mimetype = 'video/x-matroska'
+    else:
+        mimetype = None
+    
+    # 支持Range请求（视频播放需要）
+    response = send_from_directory(output_dir, filename, mimetype=mimetype)
+    response.headers['Accept-Ranges'] = 'bytes'
+    response.headers['Cache-Control'] = 'no-cache'
+    return response
 
 @app.route('/debug/paths')
 def debug_paths():

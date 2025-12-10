@@ -53,7 +53,7 @@ class VideoWriter:
     """视频写入类"""
     
     def __init__(self, output_path: str, fps: int, width: int, height: int, 
-                 codec: str = 'mp4v'):
+                 codec: str = None):
         """
         初始化视频写入器
         
@@ -62,18 +62,41 @@ class VideoWriter:
             fps: 帧率
             width: 视频宽度
             height: 视频高度
-            codec: 编码器
+            codec: 编码器（默认自动选择适合浏览器的编码器）
         """
         self.output_path = output_path
         
         # 确保输出目录存在
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
         
-        fourcc = cv2.VideoWriter_fourcc(*codec)
-        self.writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
-        
-        if not self.writer.isOpened():
-            raise ValueError(f"无法创建视频写入器: {output_path}")
+        # 如果未指定编码器，根据系统自动选择最佳编码器
+        if codec is None:
+            # 尝试使用 H.264 编码器（浏览器最佳支持）
+            # 在不同系统上尝试不同的编码器
+            codecs_to_try = ['avc1', 'H264', 'X264', 'mp4v']
+            self.writer = None
+            
+            for codec_name in codecs_to_try:
+                try:
+                    fourcc = cv2.VideoWriter_fourcc(*codec_name)
+                    writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+                    if writer.isOpened():
+                        self.writer = writer
+                        print(f"使用视频编码器: {codec_name}")
+                        break
+                    else:
+                        writer.release()
+                except:
+                    continue
+            
+            if self.writer is None:
+                raise ValueError(f"无法创建视频写入器，请检查OpenCV安装: {output_path}")
+        else:
+            fourcc = cv2.VideoWriter_fourcc(*codec)
+            self.writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+            
+            if not self.writer.isOpened():
+                raise ValueError(f"无法创建视频写入器: {output_path}")
     
     def write_frame(self, frame: np.ndarray):
         """
