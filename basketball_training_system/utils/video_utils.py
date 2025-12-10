@@ -186,3 +186,67 @@ def draw_keypoints(frame: np.ndarray, keypoints: np.ndarray,
                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
     
     return frame
+
+
+class DetectionSmoother:
+    """检测结果平滑器，减少闪烁"""
+    
+    def __init__(self, min_frames_to_show: int = 3, min_frames_to_hide: int = 5):
+        """
+        初始化平滑器
+        
+        Args:
+            min_frames_to_show: 连续检测到多少帧后才显示
+            min_frames_to_hide: 连续未检测到多少帧后才隐藏
+        """
+        self.min_frames_to_show = min_frames_to_show
+        self.min_frames_to_hide = min_frames_to_hide
+        self.detection_history = {}  # {object_id: consecutive_frames}
+        self.visible_objects = set()  # 当前可见的对象ID
+    
+    def update(self, detected_objects: dict) -> dict:
+        """
+        更新检测结果，返回平滑后的结果
+        
+        Args:
+            detected_objects: {object_id: detection_data}
+        
+        Returns:
+            平滑后的检测结果
+        """
+        current_ids = set(detected_objects.keys())
+        
+        # 更新检测历史
+        for obj_id in detected_objects:
+            if obj_id not in self.detection_history:
+                self.detection_history[obj_id] = 1
+            else:
+                self.detection_history[obj_id] += 1
+            
+            # 连续检测到足够帧数，加入可见集合
+            if self.detection_history[obj_id] >= self.min_frames_to_show:
+                self.visible_objects.add(obj_id)
+        
+        # 处理未检测到的对象
+        for obj_id in list(self.detection_history.keys()):
+            if obj_id not in current_ids:
+                self.detection_history[obj_id] -= 1
+                
+                # 连续未检测到足够帧数，从可见集合移除
+                if self.detection_history[obj_id] <= -self.min_frames_to_hide:
+                    self.visible_objects.discard(obj_id)
+                    del self.detection_history[obj_id]
+        
+        # 返回应该显示的对象
+        smoothed_results = {
+            obj_id: detected_objects[obj_id] 
+            for obj_id in self.visible_objects 
+            if obj_id in detected_objects
+        }
+        
+        return smoothed_results
+    
+    def reset(self):
+        """重置平滑器"""
+        self.detection_history.clear()
+        self.visible_objects.clear()

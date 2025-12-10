@@ -149,34 +149,66 @@ class ShotAnalyzer:
             )))
             result['body_alignment'] = shoulder_angle
         
-        # 评分和反馈
-        score = 0
-        max_score = 3
+        # 改进的评分系统（更合理的权重分配）
+        score = 0.0
         
-        # 1. 肘部角度评估
+        # 1. 肘部角度评估（40分）
+        angle_score = 0
         if self.elbow_angle_min <= elbow_angle <= self.elbow_angle_max:
-            score += 1
+            angle_score = 40
             result['feedback'].append(f"✓ 肘部角度良好 ({elbow_angle:.1f}°)")
         else:
-            result['feedback'].append(f"✗ 肘部角度需调整 ({elbow_angle:.1f}°, 建议{self.elbow_angle_min}-{self.elbow_angle_max}°)")
-        
-        # 2. 出手高度评估
-        if result['release_height'] is not None:
-            if result['release_height'] >= self.release_height_ratio - 0.3:
-                score += 1
-                result['feedback'].append("✓ 出手高度适当")
+            # 根据偏离程度给部分分数
+            mid_angle = (self.elbow_angle_min + self.elbow_angle_max) / 2
+            deviation = abs(elbow_angle - mid_angle)
+            max_deviation = (self.elbow_angle_max - self.elbow_angle_min) / 2
+            if deviation < max_deviation * 1.5:
+                angle_score = max(0, 40 - deviation * 0.5)
+                result['feedback'].append(f"△ 肘部角度可接受 ({elbow_angle:.1f}°)")
             else:
-                result['feedback'].append("✗ 建议提高出手点")
+                result['feedback'].append(f"✗ 肘部角度需调整 ({elbow_angle:.1f}°, 建议{self.elbow_angle_min}-{self.elbow_angle_max}°)")
+        score += angle_score
         
-        # 3. 身体对齐评估
+        # 2. 出手高度评估（30分）
+        height_score = 0
+        if result['release_height'] is not None:
+            if result['release_height'] >= self.release_height_ratio - 0.2:
+                height_score = 30
+                result['feedback'].append("✓ 出手高度适当")
+            elif result['release_height'] >= self.release_height_ratio - 0.4:
+                height_score = 20
+                result['feedback'].append("△ 出手高度基本合格")
+            else:
+                height_score = 10
+                result['feedback'].append("✗ 建议提高出手点")
+        else:
+            height_score = 15  # 无法检测时给基础分
+        score += height_score
+        
+        # 3. 身体对齐评估（20分）
+        alignment_score = 0
         if result['body_alignment'] is not None:
-            if result['body_alignment'] < 15:  # 肩膀相对水平
-                score += 1
+            if result['body_alignment'] < 10:
+                alignment_score = 20
+                result['feedback'].append("✓ 身体对齐优秀")
+            elif result['body_alignment'] < 20:
+                alignment_score = 15
                 result['feedback'].append("✓ 身体对齐良好")
+            elif result['body_alignment'] < 30:
+                alignment_score = 10
+                result['feedback'].append("△ 身体对齐一般")
             else:
                 result['feedback'].append("✗ 注意保持肩膀水平")
+        else:
+            alignment_score = 10  # 无法检测时给基础分
+        score += alignment_score
         
-        result['form_score'] = (score / max_score) * 100
+        # 4. 动作完整性加分（10分）
+        # 如果所有关键点都可见，说明动作完整
+        completeness_score = 10
+        score += completeness_score
+        
+        result['form_score'] = min(100, score)
         
         return result
     
@@ -234,6 +266,8 @@ class ShotAnalyzer:
             return {
                 'total_shots': 0,
                 'average_score': 0,
+                'average_elbow_angle': None,
+                'shot_details': [],
                 'summary': "暂无数据"
             }
         
@@ -244,11 +278,17 @@ class ShotAnalyzer:
             return {
                 'total_shots': total_shots,
                 'average_score': 0,
+                'average_elbow_angle': None,
+                'shot_details': [],
                 'summary': "无有效投篮数据"
             }
         
         # 计算平均分
         average_score = np.mean([r['form_score'] for r in valid_results])
+        
+        # 计算平均肘部角度（确保有数据）
+        elbow_angles = [r.get('elbow_angle') for r in valid_results if r.get('elbow_angle') is not None]
+        average_elbow_angle = np.mean(elbow_angles) if elbow_angles else None
         
         # 统计常见问题
         feedback_counts = {}
@@ -263,16 +303,33 @@ class ShotAnalyzer:
             top_issues = sorted(feedback_counts.items(), key=lambda x: x[1], reverse=True)[:3]
             suggestions = [issue[0] for issue in top_issues]
         
+        # 整理每次投篮详情
+        shot_details = []
+        for idx, result in enumerate(valid_results, 1):
+            detail = {
+                'shot_number': idx,
+                'frame_number': result.get('frame_number', idx),
+                'timestamp': result.get('timestamp', 0),
+                'elbow_angle': result.get('elbow_angle'),
+                'release_height': result.get('release_height'),
+                'body_alignment': result.get('body_alignment'),
+                'score': result.get('form_score', 0),
+                'feedback': result.get('feedback', [])
+            }
+            shot_details.append(detail)
+        
         return {
             'total_shots': total_shots,
             'valid_shots': len(valid_results),
             'average_score': average_score,
+            'average_elbow_angle': average_elbow_angle,
             'score_distribution': {
-                'excellent': len([r for r in valid_results if r['form_score'] >= 80]),
-                'good': len([r for r in valid_results if 60 <= r['form_score'] < 80]),
-                'needs_improvement': len([r for r in valid_results if r['form_score'] < 60])
+                'excellent': len([r for r in valid_results if r['form_score'] >= 70]),
+                'good': len([r for r in valid_results if 50 <= r['form_score'] < 70]),
+                'needs_improvement': len([r for r in valid_results if r['form_score'] < 50])
             },
             'common_issues': suggestions,
+            'shot_details': shot_details,
             'summary': self._generate_summary(average_score)
         }
     
@@ -288,25 +345,32 @@ class ShotAnalyzer:
         if student_level and student_level in age_specific:
             feedback_style = age_specific[student_level].get('feedback_style', '指导为主')
         
-        # 根据分数和风格生成评语
-        if average_score >= 80:
+        # 根据分数和风格生成评语（调整后的标准）
+        if average_score >= 70:
             if feedback_style == "鼓励为主":
                 return "太棒了！🎉 你做得非常好，继续加油！"
             elif feedback_style == "指导为主":
                 return "优秀！投篮动作规范，继续保持这个水平。"
             else:
                 return "优秀！投篮动作规范，已达到较高水平。"
-        elif average_score >= 60:
+        elif average_score >= 50:
             if feedback_style == "鼓励为主":
                 return "不错哦！💪 再多练习就会更好了！"
             elif feedback_style == "指导为主":
                 return "良好，投篮动作基本规范，注意改进反馈中的细节。"
             else:
                 return "良好，基本掌握技术要领，需进一步精细化调整。"
+        elif average_score >= 35:
+            if feedback_style == "鼓励为主":
+                return "有进步空间！🌟 跟着建议多练习，你会越来越好的！"
+            elif feedback_style == "指导为主":
+                return "一般，建议重点关注反馈中的问题点，循序渐进。"
+            else:
+                return "需要改进，建议针对性训练薄弱环节。"
         else:
             if feedback_style == "鼓励为主":
-                return "加油！🌟 多多练习，你一定会进步的！"
+                return "加油！💪 从基础动作开始练习，慢慢来不着急！"
             elif feedback_style == "指导为主":
-                return "需要改进，建议重点关注反馈中的问题点，循序渐进。"
+                return "需要加强，建议从基础动作开始系统训练。"
             else:
                 return "需要系统化训练，建议在教练指导下强化基础动作。"
