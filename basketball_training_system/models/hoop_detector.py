@@ -45,7 +45,7 @@ class HoopDetector:
     
     def _detect_by_color(self, frame: np.ndarray) -> List[Dict]:
         """
-        基于颜色的篮筐检测
+        基于颜色的篮筐检测（改进版 - 减少误检）
         
         Args:
             frame: 输入图像帧
@@ -56,7 +56,7 @@ class HoopDetector:
         # 转换到HSV颜色空间
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         
-        # 创建橙色掩码
+        # 创建橙色掩码（提高阈值，减少误检）
         mask_orange = cv2.inRange(hsv, self.orange_lower, self.orange_upper)
         
         # 创建红色掩码
@@ -76,28 +76,49 @@ class HoopDetector:
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         detections = []
+        frame_height, frame_width = frame.shape[:2]
         
         for contour in contours:
             area = cv2.contourArea(contour)
             
-            # 过滤小区域
-            if area < 500:
+            # 过滤小区域（提高最小面积）
+            if area < 1000:  # 从500提高到1000
+                continue
+            
+            # 过滤过大区域（可能是背景）
+            if area > frame_width * frame_height * 0.15:  # 不超过画面15%
                 continue
             
             # 获取边界框
             x, y, w, h = cv2.boundingRect(contour)
             
+            # 篮筐通常在画面上半部分（过滤下半部分的橙色物体）
+            center_y = y + h // 2
+            if center_y > frame_height * 0.75:  # 不在画面下方25%
+                continue
+            
             # 篮筐通常是圆形或椭圆形，宽高比接近1
             aspect_ratio = float(w) / h if h > 0 else 0
-            if 0.5 < aspect_ratio < 2.0:
-                cx = x + w // 2
-                cy = y + h // 2
-                
-                # 计算置信度（基于面积和形状）
-                circularity = 4 * np.pi * area / (cv2.arcLength(contour, True) ** 2 + 1e-6)
-                confidence = min(circularity, 1.0)
-                
-                detections.append({
+            if not (0.6 < aspect_ratio < 1.7):  # 收紧宽高比范围
+                continue
+            
+            # 检查圆形度（篮筐应该接近圆形）
+            circularity = 4 * np.pi * area / (cv2.arcLength(contour, True) ** 2 + 1e-6)
+            if circularity < 0.5:  # 要求较高的圆形度
+                continue
+            
+            cx = x + w // 2
+            cy = y + h // 2
+            
+            # 计算置信度（综合面积、形状和位置）
+            position_score = 1.0 - (center_y / frame_height)  # 越靠上越可能是篮筐
+            confidence = (circularity * 0.6 + position_score * 0.4)
+            
+            # 只保留高置信度检测
+            if confidence < 0.4:
+                continue
+            
+            detections.append({
                     'bbox': [x, y, x + w, y + h],
                     'center': [cx, cy],
                     'confidence': confidence,

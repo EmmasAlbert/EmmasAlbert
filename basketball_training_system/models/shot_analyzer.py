@@ -27,6 +27,11 @@ class ShotAnalyzer:
         self.elbow_angle_min = self.thresholds.get('elbow_angle_min', 60)
         self.elbow_angle_max = self.thresholds.get('elbow_angle_max', 110)
         self.release_height_ratio = self.thresholds.get('release_height_ratio', 1.3)
+        
+        # 轨迹跟踪历史（用于检测投篮动作）
+        self.wrist_trajectory = []  # 手腕轨迹
+        self.ball_trajectory = []   # 篮球轨迹
+        self.max_trajectory_length = 10  # 保留最近10帧
     
     def _get_adapted_thresholds(self) -> Dict:
         """
@@ -212,10 +217,46 @@ class ShotAnalyzer:
         
         return result
     
+    def _estimate_body_scale(self, keypoints: np.ndarray) -> float:
+        """
+        估算人体在画面中的比例（用于距离自适应）
+        
+        Returns:
+            身体比例系数（肩膀到髋部的像素距离）
+        """
+        left_shoulder = self.pose_estimator.get_keypoint(keypoints, "left_shoulder")
+        right_shoulder = self.pose_estimator.get_keypoint(keypoints, "right_shoulder")
+        left_hip = self.pose_estimator.get_keypoint(keypoints, "left_hip")
+        right_hip = self.pose_estimator.get_keypoint(keypoints, "right_hip")
+        
+        # 计算肩膀中点
+        if left_shoulder[2] > 0.3 and right_shoulder[2] > 0.3:
+            shoulder_y = (left_shoulder[1] + right_shoulder[1]) / 2
+        elif left_shoulder[2] > 0.3:
+            shoulder_y = left_shoulder[1]
+        elif right_shoulder[2] > 0.3:
+            shoulder_y = right_shoulder[1]
+        else:
+            return 150.0  # 默认值
+        
+        # 计算髋部中点
+        if left_hip[2] > 0.3 and right_hip[2] > 0.3:
+            hip_y = (left_hip[1] + right_hip[1]) / 2
+        elif left_hip[2] > 0.3:
+            hip_y = left_hip[1]
+        elif right_hip[2] > 0.3:
+            hip_y = right_hip[1]
+        else:
+            return 150.0  # 默认值
+        
+        # 肩膀到髋部的距离作为比例
+        torso_height = abs(hip_y - shoulder_y)
+        return max(50.0, torso_height)  # 至少50像素
+    
     def is_shooting_moment(self, keypoints: np.ndarray, 
                           basketball_position: Tuple[float, float] = None) -> bool:
         """
-        判断是否为投篮瞬间
+        判断是否为投篮瞬间（改进版 - 支持多角度和距离自适应）
         
         Args:
             keypoints: 关键点数组
@@ -224,33 +265,142 @@ class ShotAnalyzer:
         Returns:
             是否为投篮瞬间
         """
+        # 获取关键点
+        left_wrist = self.pose_estimator.get_keypoint(keypoints, "left_wrist")
+        right_wrist = self.pose_estimator.get_keypoint(keypoints, "right_wrist")
+        left_elbow = self.pose_estimator.get_keypoint(keypoints, "left_elbow")
+        right_elbow = self.pose_estimator.get_keypoint(keypoints, "right_elbow")
+        left_shoulder = self.pose_estimator.get_keypoint(keypoints, "left_shoulder")
+        right_shoulder = self.pose_estimator.get_keypoint(keypoints, "right_shoulder")
+        nose = self.pose_estimator.get_keypoint(keypoints, "nose")
+        
+        # 估算身体比例（用于距离自适应）
+        body_scale = self._estimate_body_scale(keypoints)
+        
+        # 至少一个手腕可见
+        if max(left_wrist[2], right_wrist[2]) < 0.3:
+            return False
+        
+        # 获取较高的手腕（投篮手）
+        if left_wrist[2] > 0.3 and right_wrist[2] > 0.3:
+            is_left_higher = left_wrist[1] < right_wrist[1]
+            wrist = left_wrist if is_left_higher else right_wrist
+            elbow = left_elbow if is_left_higher else right_elbow
+            shoulder = left_shoulder if is_left_higher else right_shoulder
+        elif left_wrist[2] > 0.3:
+            wrist = left_wrist
+            elbow = left_elbow
+            shoulder = left_shoulder
+        else:
+            wrist = right_wrist
+            elbow = right_elbow
+            shoulder = right_shoulder
+        
+        # 条件1：手腕高于肩膀（相对于body_scale调整阈值）
+        wrist_above_shoulder = False
+        if shoulder[2] > 0.3:
+            # 使用相对高度判断（适应不同距离）
+            height_diff = shoulder[1] - wrist[1]
+            threshold = body_scale * 0.3  # 30%的躯干高度
+            wrist_above_shoulder = height_diff > threshold
+        elif nose[2] > 0.3:
+            # 如果肩膀不可见，使用头部作为参考
+            height_diff = nose[1] - wrist[1]
+            threshold = body_scale * 0.1  # 10%的躯干高度
+            wrist_above_shoulder = height_diff > -threshold  # 允许稍低于头部
+        
+        if not wrist_above_shoulder:
+            return False
+        
+        # 条件2：肘部也抬起（确保是投篮而非挥手）
+        elbow_raised = False
+        if elbow[2] > 0.3 and shoulder[2] > 0.3:
+            elbow_diff = shoulder[1] - elbow[1]
+            elbow_raised = elbow_diff > body_scale * 0.1  # 肘部高于肩膀10%
+        else:
+            elbow_raised = True  # 如果肘部不可见，不强制要求
+        
+        # 条件3：如果有篮球位置，检查距离（使用自适应阈值）
+        ball_near_hand = True
+        if basketball_position is not None:
+            ball_x, ball_y = basketball_position
+            distance = np.sqrt((wrist[0] - ball_x)**2 + (wrist[1] - ball_y)**2)
+            # 距离阈值根据body_scale自适应
+            distance_threshold = body_scale * 1.5  # 1.5倍躯干高度
+            ball_near_hand = distance < distance_threshold
+        
+        # 综合判断：手腕抬起 + 肘部抬起 + 球在附近（如果有球）
+        return wrist_above_shoulder and elbow_raised and ball_near_hand
+    
+    def update_trajectories(self, keypoints: np.ndarray, basketball_position: Tuple[float, float] = None):
+        """
+        更新轨迹历史
+        
+        Args:
+            keypoints: 关键点数组
+            basketball_position: 篮球位置 (x, y)
+        """
         # 获取手腕位置
         left_wrist = self.pose_estimator.get_keypoint(keypoints, "left_wrist")
         right_wrist = self.pose_estimator.get_keypoint(keypoints, "right_wrist")
         
-        # 至少一个手腕可见
-        if max(left_wrist[2], right_wrist[2]) < 0.5:
+        # 选择较高的手腕
+        if left_wrist[2] > 0.3 and right_wrist[2] > 0.3:
+            wrist = left_wrist if left_wrist[1] < right_wrist[1] else right_wrist
+        elif left_wrist[2] > 0.3:
+            wrist = left_wrist
+        elif right_wrist[2] > 0.3:
+            wrist = right_wrist
+        else:
+            wrist = None
+        
+        # 更新手腕轨迹
+        if wrist is not None:
+            self.wrist_trajectory.append((wrist[0], wrist[1]))
+            if len(self.wrist_trajectory) > self.max_trajectory_length:
+                self.wrist_trajectory.pop(0)
+        
+        # 更新篮球轨迹
+        if basketball_position is not None:
+            self.ball_trajectory.append(basketball_position)
+            if len(self.ball_trajectory) > self.max_trajectory_length:
+                self.ball_trajectory.pop(0)
+    
+    def detect_shooting_by_trajectory(self) -> bool:
+        """
+        基于轨迹检测投篮动作（补充方法）
+        
+        Returns:
+            是否检测到投篮
+        """
+        # 需要至少5帧数据
+        if len(self.wrist_trajectory) < 5:
             return False
         
-        # 获取较高的手腕（投篮手）
-        wrist = left_wrist if left_wrist[1] < right_wrist[1] else right_wrist
+        # 检测手部向上运动
+        recent_wrists = self.wrist_trajectory[-5:]
+        y_coords = [w[1] for w in recent_wrists]
         
-        # 获取头部位置
-        nose = self.pose_estimator.get_keypoint(keypoints, "nose")
+        # 向上运动：Y坐标递减（屏幕坐标系）
+        upward_motion = all(y_coords[i] > y_coords[i+1] + 3 for i in range(len(y_coords)-1))
         
-        if nose[2] < 0.5:
-            return False
+        # 或者检测快速上升：前3帧到后2帧的Y坐标变化
+        if not upward_motion and len(recent_wrists) >= 5:
+            early_avg_y = np.mean([y_coords[0], y_coords[1]])
+            late_avg_y = np.mean([y_coords[3], y_coords[4]])
+            upward_motion = early_avg_y - late_avg_y > 20  # 上升超过20像素
         
-        # 手腕高于头部
-        if wrist[1] < nose[1]:
-            # 如果有篮球位置信息，检查篮球是否在手附近
-            if basketball_position is not None:
-                ball_x, ball_y = basketball_position
-                distance = np.sqrt((wrist[0] - ball_x)**2 + (wrist[1] - ball_y)**2)
-                return distance < 100  # 像素距离阈值
-            return True
+        # 检测篮球抛物线（如果有球的轨迹）
+        ball_parabola = False
+        if len(self.ball_trajectory) >= 5:
+            ball_y_coords = [b[1] for b in self.ball_trajectory[-5:]]
+            # 检测先上升后下降的模式
+            mid_idx = len(ball_y_coords) // 2
+            rising = ball_y_coords[0] > ball_y_coords[mid_idx]  # 前半段上升
+            falling = ball_y_coords[mid_idx] > ball_y_coords[-1]  # 后半段下降
+            ball_parabola = rising and falling
         
-        return False
+        return upward_motion or ball_parabola
     
     def generate_report(self, analysis_results: List[Dict]) -> Dict:
         """
