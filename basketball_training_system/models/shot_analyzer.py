@@ -127,23 +127,23 @@ class ShotAnalyzer:
             result['feedback'].append("投篮手臂关键点不够清晰，请调整角度")
             return result
         
-        # 计算肘部角度
+        # 计算肘部角度（确保转换为Python float）
         elbow_angle = self.pose_estimator.calculate_angle(
             (shoulder[0], shoulder[1]),
             (elbow[0], elbow[1]),
             (wrist[0], wrist[1])
         )
-        result['elbow_angle'] = elbow_angle
+        result['elbow_angle'] = float(elbow_angle)
         
-        # 计算出手高度
+        # 计算出手高度（确保转换为Python float）
         nose = self.pose_estimator.get_keypoint(keypoints, "nose")
         body_height = self.pose_estimator.get_body_height(keypoints)
         
         if body_height > 0:
             release_height = abs(wrist[1] - nose[1]) / body_height
-            result['release_height'] = release_height
+            result['release_height'] = float(release_height)
         
-        # 计算身体对齐度（肩膀水平度）
+        # 计算身体对齐度（肩膀水平度）（确保转换为Python float）
         left_shoulder = self.pose_estimator.get_keypoint(keypoints, "left_shoulder")
         right_shoulder = self.pose_estimator.get_keypoint(keypoints, "right_shoulder")
         
@@ -152,7 +152,7 @@ class ShotAnalyzer:
                 right_shoulder[1] - left_shoulder[1],
                 right_shoulder[0] - left_shoulder[0]
             )))
-            result['body_alignment'] = shoulder_angle
+            result['body_alignment'] = float(shoulder_angle)
         
         # 改进的评分系统（更合理的权重分配）
         score = 0.0
@@ -213,7 +213,7 @@ class ShotAnalyzer:
         completeness_score = 10
         score += completeness_score
         
-        result['form_score'] = min(100, score)
+        result['form_score'] = float(min(100, score))
         
         return result
     
@@ -433,12 +433,12 @@ class ShotAnalyzer:
                 'summary': "无有效投篮数据"
             }
         
-        # 计算平均分
-        average_score = np.mean([r['form_score'] for r in valid_results])
+        # 计算平均分（转换为Python float）
+        average_score = float(np.mean([r['form_score'] for r in valid_results]))
         
-        # 计算平均肘部角度（确保有数据）
+        # 计算平均肘部角度（确保有数据，转换为Python float）
         elbow_angles = [r.get('elbow_angle') for r in valid_results if r.get('elbow_angle') is not None]
-        average_elbow_angle = np.mean(elbow_angles) if elbow_angles else None
+        average_elbow_angle = float(np.mean(elbow_angles)) if elbow_angles else None
         
         # 统计常见问题
         feedback_counts = {}
@@ -453,17 +453,17 @@ class ShotAnalyzer:
             top_issues = sorted(feedback_counts.items(), key=lambda x: x[1], reverse=True)[:3]
             suggestions = [issue[0] for issue in top_issues]
         
-        # 整理每次投篮详情
+        # 整理每次投篮详情（确保所有值都是JSON可序列化的）
         shot_details = []
         for idx, result in enumerate(valid_results, 1):
             detail = {
                 'shot_number': idx,
                 'frame_number': result.get('frame_number', idx),
-                'timestamp': result.get('timestamp', 0),
-                'elbow_angle': result.get('elbow_angle'),
-                'release_height': result.get('release_height'),
-                'body_alignment': result.get('body_alignment'),
-                'score': result.get('form_score', 0),
+                'timestamp': float(result.get('timestamp', 0)) if result.get('timestamp') is not None else 0,
+                'elbow_angle': float(result.get('elbow_angle')) if result.get('elbow_angle') is not None else None,
+                'release_height': float(result.get('release_height')) if result.get('release_height') is not None else None,
+                'body_alignment': float(result.get('body_alignment')) if result.get('body_alignment') is not None else None,
+                'score': float(result.get('form_score', 0)),
                 'feedback': result.get('feedback', [])
             }
             shot_details.append(detail)
