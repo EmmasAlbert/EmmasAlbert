@@ -162,11 +162,14 @@ async function captureAndProcessFrame() {
     const canvas = document.getElementById('cameraCanvas');
     const context = canvas.getContext('2d');
     
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    // 只在首次设置canvas尺寸
+    if (canvas.width === 0) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+    }
     
+    // 捕获当前帧
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
     const imageData = canvas.toDataURL('image/jpeg');
     
     try {
@@ -184,14 +187,22 @@ async function captureAndProcessFrame() {
             document.getElementById('personCount').textContent = data.detections.players;
             document.getElementById('hoopCount').textContent = data.detections.hoops;
             
-            // 显示处理后的图像
-            video.style.display = 'none';
+            // 在canvas上绘制处理后的图像（叠加层）
             const img = new Image();
             img.onload = function() {
+                // 清除canvas
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                // 绘制处理后的图像
                 context.drawImage(img, 0, 0, canvas.width, canvas.height);
+                // 显示canvas叠加层
+                canvas.style.display = 'block';
+                
+                // 短暂显示后隐藏，让原始视频流继续显示
+                setTimeout(() => {
+                    canvas.style.display = 'none';
+                }, 800);
             };
             img.src = data.image;
-            canvas.style.display = 'block';
             
             // 更新分析反馈
             if (data.analysis) {
@@ -203,12 +214,6 @@ async function captureAndProcessFrame() {
             } else {
                 document.getElementById('cameraFeedback').textContent = '正在监测中...';
             }
-            
-            // 恢复视频显示
-            setTimeout(() => {
-                canvas.style.display = 'none';
-                video.style.display = 'block';
-            }, 900);
         }
     } catch (err) {
         console.error('处理帧错误:', err);
