@@ -1,0 +1,248 @@
+/* 个人资料页面样式 */
+
+.profile-section {
+    padding: 30px;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.profile-container {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+/* 头像区域 */
+.avatar-section {
+    text-align: center;
+    padding: 30px;
+    background: #3498db;
+    border-radius: 4px;
+    color: white;
+}
+
+.avatar-wrapper {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 15px;
+    cursor: pointer;
+}
+
+.avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.avatar-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.avatar-wrapper:hover .avatar-overlay {
+    opacity: 1;
+}
+
+.avatar-overlay span {
+    color: white;
+    font-size: 14px;
+}
+
+.avatar-section h2 {
+    margin-bottom: 10px;
+    font-size: 24px;
+}
+
+.role-badge {
+    display: inline-block;
+    padding: 5px 15px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    font-size: 14px;
+}
+
+/* 表单区域 */
+.form-section,
+.school-section,
+.feedback-section {
+    background: #f8f9fa;
+    padding: 25px;
+    border-radius: 4px;
+}
+
+.form-section h3,
+.school-section h3,
+.feedback-section h3 {
+    color: #333;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #555;
+    font-weight: 500;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+.disabled-input {
+    background: #e9ecef;
+    cursor: not-allowed;
+}
+
+/* 学校绑定区域 */
+.school-info {
+    background: white;
+    padding: 20px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+}
+
+.school-info.bound {
+    border-left: 4px solid #27ae60;
+}
+
+.school-info p {
+    margin: 5px 0;
+    color: #666;
+}
+
+.school-info .school-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+}
+
+.not-bound {
+    color: #999;
+    font-style: italic;
+}
+
+.bind-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 15px;
+    align-items: end;
+}
+
+@media (max-width: 768px) {
+    .bind-form {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* 反馈区域 */
+.feedback-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.feedback-item {
+    background: white;
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    border-left: 4px solid #3498db;
+}
+
+.feedback-item .teacher-name {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.feedback-item .feedback-text {
+    color: #555;
+    line-height: 1.6;
+}
+
+.feedback-item .feedback-date {
+    font-size: 12px;
+    color: #999;
+    margin-top: 10px;
+}
+
+.no-feedback {
+    color: #999;
+    text-align: center;
+    padding: 30px;
+    font-style: italic;
+}
+
+/* 导航链接 */
+.nav-link {
+    color: white;
+    text-decoration: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.nav-link:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* 消息提示 */
+.message {
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+}

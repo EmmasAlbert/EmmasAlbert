@@ -1,0 +1,114 @@
+# YOLOv8篮球训练辅助系统配置文件
+
+# 系统设置
+system:
+  name: "YOLOv8篮球训练辅助系统"
+  version: "1.0.0"
+  author: "赖炳灿"
+  
+# 模型配置
+model:
+  # YOLOv8模型设置
+  yolo:
+    model_path: "models/yolov8n.pt"  # 使用nano版本，可改为yolov8s.pt, yolov8m.pt等
+    conf_threshold: 0.25  # 置信度阈值
+    iou_threshold: 0.45   # NMS IOU阈值
+    device: "cpu"         # cuda或cpu（如果没有GPU使用cpu）
+    
+  # 姿态估计设置
+  pose:
+    model_path: "models/yolov8n-pose.pt"
+    conf_threshold: 0.3
+    keypoint_threshold: 0.5
+    device: "cpu"  # cuda或cpu（如果没有GPU使用cpu）
+
+# 数据路径
+paths:
+  raw_data: "data/raw"
+  processed_data: "data/processed"
+  annotations: "data/annotations"
+  models: "models"
+  outputs: "outputs"
+  logs: "logs"
+
+# 视频处理设置
+video:
+  input_size: [640, 640]
+  fps: 30
+  output_format: "mp4"
+  codec: "mp4v"
+
+# 篮球检测设置
+basketball_detection:
+  classes: ["person", "sports ball"]  # 检测人和篮球
+  min_confidence: 0.4
+  track_history: 30  # 跟踪历史帧数
+
+# 投篮动作分析设置
+shot_analysis:
+  # 关键点索引 (COCO格式)
+  keypoints:
+    nose: 0
+    left_eye: 1
+    right_eye: 2
+    left_ear: 3
+    right_ear: 4
+    left_shoulder: 5
+    right_shoulder: 6
+    left_elbow: 7
+    right_elbow: 8
+    left_wrist: 9
+    right_wrist: 10
+    left_hip: 11
+    right_hip: 12
+    left_knee: 13
+    right_knee: 14
+    left_ankle: 15
+    right_ankle: 16
+  
+  # 投篮动作阈值（通用标准，适合中小学生）
+  shooting_thresholds:
+    elbow_angle_min: 45   # 肘部最小角度（中小学生适用）
+    elbow_angle_max: 125  # 肘部最大角度（比成人标准更宽容）
+    release_height_ratio: 1.05  # 出手高度与身高比例（相对值）
+    follow_through_angle: 45   # 随球动作角度
+  
+  # 针对不同年龄段的调整标准（可选）
+  age_specific_thresholds:
+    # 小学生（6-12岁）- 基础阶段，标准宽松
+    primary:
+      age_range: [6, 12]
+      elbow_angle_min: 40
+      elbow_angle_max: 130
+      release_height_ratio: 1.0
+      feedback_style: "鼓励为主"
+    
+    # 初中生（13-15岁）- 发展阶段，标准适中
+    junior:
+      age_range: [13, 15]
+      elbow_angle_min: 45
+      elbow_angle_max: 125
+      release_height_ratio: 1.05
+      feedback_style: "指导为主"
+    
+    # 高中生（16-18岁）- 提高阶段，标准较严
+    senior:
+      age_range: [16, 18]
+      elbow_angle_min: 50
+      elbow_angle_max: 120
+      release_height_ratio: 1.1
+      feedback_style: "精准分析"
+
+# Web服务器设置
+server:
+  host: "0.0.0.0"
+  port: 5000
+  debug: true
+  upload_folder: "data/raw"
+  max_content_length: 500  # MB
+
+# 日志设置
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/system.log"

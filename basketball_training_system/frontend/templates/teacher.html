@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教师控制台 - YOLOv8篮球训练辅助系统</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/teacher.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <header class="header teacher-header">
+            <h1>🏀 教师控制台</h1>
+            <div class="user-info">
+                <span id="teacherName">教师</span>
+                <a href="/dashboard" class="nav-link">训练页面</a>
+                <a href="/profile" class="nav-link">个人资料</a>
+                <button id="logoutBtn" class="btn btn-secondary">退出登录</button>
+            </div>
+        </header>
+
+        <!-- 主要内容区 -->
+        <div class="teacher-main">
+            <!-- 左侧面板 - 学生列表 -->
+            <div class="left-panel">
+                <div class="search-section">
+                    <h3>🔍 搜索学生</h3>
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="输入学号或姓名搜索...">
+                        <button id="searchBtn" class="btn btn-primary">搜索</button>
+                    </div>
+                </div>
+
+                <div class="filter-section">
+                    <h3>🎓 班级筛选</h3>
+                    <select id="classFilter">
+                        <option value="">全部班级</option>
+                    </select>
+                </div>
+
+                <div class="student-list-section">
+                    <h3>👥 学生列表</h3>
+                    <div id="studentList" class="student-list">
+                        <p class="loading">加载中...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧面板 - 学生详情 -->
+            <div class="right-panel">
+                <div id="studentDetail" class="student-detail">
+                    <div class="empty-state">
+                        <span class="empty-icon">👈</span>
+                        <p>请从左侧选择一个学生查看详情</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加反馈弹窗 -->
+    <div id="feedbackModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📝 添加训练反馈</h3>
+                <span class="close-btn" onclick="closeFeedbackModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p id="feedbackStudentName">学生: </p>
+                <textarea id="feedbackText" rows="5" placeholder="请输入对学生训练的反馈和建议..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeFeedbackModal()">取消</button>
+                <button class="btn btn-primary" onclick="submitFeedback()">提交反馈</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/teacher.js"></script>
+</body>
+</html>
