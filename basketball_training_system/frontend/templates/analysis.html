@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频分析 - 篮球训练辅助系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="logo">🏀</span>
+            <span class="brand-text">篮球训练辅助系统</span>
+        </div>
+        <div class="nav-links">
+            <a href="/" class="nav-link">首页</a>
+            <a href="/analysis" class="nav-link active">视频分析</a>
+            <a href="/history" class="nav-link">训练记录</a>
+            <a href="/settings" class="nav-link">设置</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <h1>训练视频分析</h1>
+        
+        <div class="analysis-container">
+            <div class="upload-section">
+                <h2>上传视频</h2>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📹</div>
+                    <p>拖拽视频文件到此处，或点击选择文件</p>
+                    <p class="file-types">支持格式: MP4, AVI, MOV, MKV, WebM</p>
+                    <input type="file" id="videoInput" accept=".mp4,.avi,.mov,.mkv,.webm" hidden>
+                    <button class="btn btn-secondary" id="selectFileBtn">选择文件</button>
+                </div>
+                
+                <div class="selected-file" id="selectedFile" style="display: none;">
+                    <span class="file-name" id="fileName"></span>
+                    <button class="btn-icon" id="removeFile">✕</button>
+                </div>
+
+                <div class="analysis-options">
+                    <h3>分析选项</h3>
+                    <div class="option-group">
+                        <label>投篮手:</label>
+                        <select id="shootingHand">
+                            <option value="right">右手</option>
+                            <option value="left">左手</option>
+                        </select>
+                    </div>
+                    <div class="option-group">
+                        <label>跳帧数:</label>
+                        <input type="number" id="skipFrames" value="0" min="0" max="10">
+                        <span class="help-text">跳过指定数量的帧以加快分析速度</span>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary btn-large" id="analyzeBtn" disabled>
+                    开始分析
+                </button>
+            </div>
+
+            <div class="results-section" id="resultsSection" style="display: none;">
+                <h2>分析结果</h2>
+                
+                <div class="loading" id="loadingIndicator">
+                    <div class="spinner"></div>
+                    <p>正在分析视频，请稍候...</p>
+                </div>
+
+                <div class="results-content" id="resultsContent" style="display: none;">
+                    <div class="result-card">
+                        <h3>📊 统计数据</h3>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <span class="stat-value" id="totalShots">-</span>
+                                <span class="stat-label">投篮次数</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="qualityScore">-</span>
+                                <span class="stat-label">姿势评分</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="avgElbow">-</span>
+                                <span class="stat-label">平均肘部角度</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="avgKnee">-</span>
+                                <span class="stat-label">平均膝盖角度</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="result-card">
+                        <h3>✅ 优点</h3>
+                        <ul class="feedback-list improvements" id="improvementsList">
+                        </ul>
+                    </div>
+
+                    <div class="result-card">
+                        <h3>⚠️ 需改进</h3>
+                        <ul class="feedback-list areas-to-work" id="areasToWorkList">
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <section class="image-analysis-section">
+            <h2>单帧图像分析</h2>
+            <p>上传单张图片进行快速姿势分析</p>
+            
+            <div class="upload-area small" id="imageUploadArea">
+                <div class="upload-icon">🖼️</div>
+                <p>拖拽图片到此处</p>
+                <input type="file" id="imageInput" accept=".jpg,.jpeg,.png" hidden>
+                <button class="btn btn-secondary" id="selectImageBtn">选择图片</button>
+            </div>
+
+            <div class="image-preview" id="imagePreview" style="display: none;">
+                <img id="previewImage" src="" alt="Preview">
+                <div class="image-analysis-result" id="imageAnalysisResult">
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>© 2024 篮球训练辅助系统</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/analysis.js') }}"></script>
+</body>
+</html>
