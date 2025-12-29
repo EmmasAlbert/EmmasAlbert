@@ -7,7 +7,7 @@
 
 body {
     font-family: 'Segoe UI', 'Microsoft YaHei', Tahoma, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #f5f5f5;
     min-height: 100vh;
     display: flex;
     align-items: center;
@@ -20,16 +20,16 @@ body {
     max-width: 1200px;
     width: 100%;
     background: white;
-    border-radius: 20px;
+    border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     min-height: 600px;
 }
 
 /* 左侧区域 */
 .auth-left {
     flex: 1;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #3498db;
     padding: 60px 50px;
     color: white;
     display: flex;
@@ -44,12 +44,6 @@ body {
 .basketball-icon {
     font-size: 64px;
     margin-bottom: 20px;
-    animation: bounce 2s infinite;
-}
-
-@keyframes bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
 }
 
 .logo h1 {
@@ -147,18 +141,17 @@ form {
 .form-group select {
     width: 100%;
     padding: 12px 15px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
     font-size: 15px;
-    transition: all 0.3s;
-    background: #f8f9fa;
+    transition: border-color 0.2s;
+    background: white;
 }
 
 .form-group input:focus,
 .form-group select:focus {
     outline: none;
-    border-color: #667eea;
-    background: white;
+    border-color: #3498db;
 }
 
 .form-footer {
@@ -184,15 +177,13 @@ form {
 }
 
 .link {
-    color: #667eea;
+    color: #3498db;
     text-decoration: none;
     font-size: 14px;
     font-weight: 500;
-    transition: color 0.3s;
 }
 
 .link:hover {
-    color: #5568d3;
     text-decoration: underline;
 }
 
@@ -201,25 +192,24 @@ form {
     width: 100%;
     padding: 14px;
     border: none;
-    border-radius: 8px;
+    border-radius: 4px;
     font-size: 16px;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: background 0.2s;
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #3498db;
     color: white;
 }
 
 .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    background: #2980b9;
 }
 
 .btn-primary:active {
-    transform: translateY(0);
+    background: #21618c;
 }
 
 /* 消息提示 */
@@ -337,13 +327,13 @@ form {
     align-items: center;
     padding: 20px;
     border: 2px solid #e0e0e0;
-    border-radius: 12px;
-    transition: all 0.3s;
+    border-radius: 4px;
+    transition: border-color 0.2s;
 }
 
 .role-option input:checked + .role-card {
-    border-color: #667eea;
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    border-color: #3498db;
+    background: #e3f2fd;
 }
 
 .role-icon {
@@ -357,7 +347,7 @@ form {
 }
 
 .role-option input:checked + .role-card .role-name {
-    color: #667eea;
+    color: #3498db;
 }
 
 /* 表单提示文字 */
@@ -370,20 +360,20 @@ form {
 
 /* 邀请码输入组样式 */
 .invite-code-group {
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+    background: #f0f8ff;
     padding: 20px;
-    border-radius: 12px;
-    border: 1px dashed #667eea;
+    border-radius: 4px;
+    border: 1px solid #3498db;
     margin-bottom: 20px;
 }
 
 .invite-code-group label {
-    color: #667eea;
+    color: #2c3e50;
     font-weight: 600;
 }
 
 .invite-code-group input {
-    border-color: #667eea;
+    border-color: #3498db;
     font-family: 'Courier New', monospace;
     letter-spacing: 2px;
     text-transform: uppercase;
@@ -395,10 +385,10 @@ form {
 }
 
 .invite-code-group .hint code {
-    background: rgba(102, 126, 234, 0.15);
+    background: #e3f2fd;
     padding: 2px 6px;
-    border-radius: 4px;
+    border-radius: 3px;
     font-family: 'Courier New', monospace;
-    color: #667eea;
-    font-weight: 600;
+    color: #2c3e50;
+    font-weight: 500;
 }
