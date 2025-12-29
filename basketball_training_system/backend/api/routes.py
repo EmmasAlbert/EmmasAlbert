@@ -10,6 +10,8 @@ import tempfile
 from typing import Optional
 from datetime import datetime
 
+import cv2
+import numpy as np
 from flask import Blueprint, request, jsonify, send_file, current_app
 from werkzeug.utils import secure_filename
 
@@ -140,9 +142,6 @@ def analyze_frame():
         return jsonify({'error': '没有选择文件'}), 400
     
     try:
-        import numpy as np
-        import cv2
-        
         # Read image
         file_bytes = file.read()
         nparr = np.frombuffer(file_bytes, np.uint8)

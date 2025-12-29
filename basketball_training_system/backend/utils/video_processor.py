@@ -63,13 +63,15 @@ class VideoProcessor:
         if not self.cap.isOpened():
             raise ValueError(f"Cannot open video: {video_path}")
         
+        frame_count = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
+        fps = self.cap.get(cv2.CAP_PROP_FPS)
         self.video_info = VideoInfo(
             path=video_path,
             width=int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
             height=int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
-            fps=self.cap.get(cv2.CAP_PROP_FPS),
-            frame_count=int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT)),
-            duration=int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT)) / max(self.cap.get(cv2.CAP_PROP_FPS), 1)
+            fps=fps,
+            frame_count=int(frame_count),
+            duration=frame_count / max(fps, 1)
         )
         
         return self.video_info

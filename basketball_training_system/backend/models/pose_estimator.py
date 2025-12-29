@@ -131,9 +131,9 @@ class PoseEstimator:
                 x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
                 conf = float(box.conf[0])
                 
-                # Parse keypoints
-                kpts_xy = kpts.xy[0].cpu().numpy()  # Shape: (17, 2)
-                kpts_conf = kpts.conf[0].cpu().numpy() if kpts.conf is not None else np.ones(17)
+                # Parse keypoints - detach and move to CPU for numpy conversion
+                kpts_xy = kpts.xy[0].detach().cpu().numpy()  # Shape: (17, 2)
+                kpts_conf = kpts.conf[0].detach().cpu().numpy() if kpts.conf is not None else np.ones(17)
                 
                 keypoints = {}
                 for j, name in enumerate(self.KEYPOINT_NAMES):
@@ -182,14 +182,14 @@ class PoseEstimator:
             boxes = result.boxes
             keypoints_data = result.keypoints
             
-            track_ids = boxes.id.cpu().numpy() if boxes.id is not None else range(len(boxes))
+            track_ids = boxes.id.detach().cpu().numpy() if boxes.id is not None else range(len(boxes))
             
             for i, (box, kpts, track_id) in enumerate(zip(boxes, keypoints_data, track_ids)):
                 x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
                 conf = float(box.conf[0])
                 
-                kpts_xy = kpts.xy[0].cpu().numpy()
-                kpts_conf = kpts.conf[0].cpu().numpy() if kpts.conf is not None else np.ones(17)
+                kpts_xy = kpts.xy[0].detach().cpu().numpy()
+                kpts_conf = kpts.conf[0].detach().cpu().numpy() if kpts.conf is not None else np.ones(17)
                 
                 keypoints = {}
                 for j, name in enumerate(self.KEYPOINT_NAMES):
