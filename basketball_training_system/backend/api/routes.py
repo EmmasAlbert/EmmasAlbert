@@ -46,11 +46,13 @@ def analyze_video():
         - file: Video file (mp4, avi, mov, mkv, webm)
         - shooting_hand: 'left' or 'right' (optional, default: 'right')
         - skip_frames: Number of frames to skip (optional, default: 0)
+        - output_annotated: 'true' to generate annotated video (optional)
     
     Response:
         - session_id: Unique identifier for this analysis
         - statistics: Session statistics
         - feedback: Training feedback
+        - annotated_video_url: URL to download annotated video (if requested)
     """
     if 'file' not in request.files:
         return jsonify({'error': '没有上传文件'}), 400
@@ -67,6 +69,7 @@ def analyze_video():
         # Get analysis parameters
         shooting_hand = request.form.get('shooting_hand', 'right')
         skip_frames = int(request.form.get('skip_frames', 0))
+        output_annotated = request.form.get('output_annotated', 'false').lower() == 'true'
         
         # Generate session ID
         session_id = str(uuid.uuid4())[:8]
@@ -76,6 +79,15 @@ def analyze_video():
         temp_dir = tempfile.gettempdir()
         video_path = os.path.join(temp_dir, f'{session_id}_{filename}')
         file.save(video_path)
+        
+        # Output path for annotated video
+        output_video_path = None
+        annotated_video_url = None
+        if output_annotated:
+            data_dir = current_app.config.get('DATA_DIR', 'data')
+            output_dir = os.path.join(data_dir, 'annotated_videos')
+            os.makedirs(output_dir, exist_ok=True)
+            output_video_path = os.path.join(output_dir, f'{session_id}_annotated.mp4')
         
         # Get analyzer from app context
         analyzer_service = current_app.config.get('analyzer_service')
@@ -100,19 +112,27 @@ def analyze_video():
             video_path=video_path,
             session_id=session_id,
             shooting_hand=shooting_hand,
-            skip_frames=skip_frames
+            skip_frames=skip_frames,
+            output_video_path=output_video_path
         )
         
         # Clean up temp file
         if os.path.exists(video_path):
             os.remove(video_path)
         
+        # Set annotated video URL if generated
+        if output_video_path and os.path.exists(output_video_path):
+            annotated_video_url = f'/api/videos/annotated/{session_id}'
+        
         return jsonify({
             'session_id': session_id,
             'status': 'completed',
             'statistics': results.get('statistics', {}),
             'feedback': results.get('feedback', []),
-            'details': results.get('details', {})
+            'improvements': results.get('improvements', []),
+            'areas_to_work': results.get('areas_to_work', []),
+            'details': results.get('details', {}),
+            'annotated_video_url': annotated_video_url
         })
         
     except Exception as e:
@@ -379,3 +399,85 @@ def settings():
     current_app.config['settings'] = settings_store
     
     return jsonify(settings_store)
+
+
+@api.route('/videos/annotated/<session_id>', methods=['GET'])
+def get_annotated_video(session_id: str):
+    """
+    Get annotated video for a session.
+    
+    Path Parameters:
+        - session_id: Session identifier
+    
+    Response:
+        - Annotated video file
+    """
+    data_dir = current_app.config.get('DATA_DIR', 'data')
+    video_path = os.path.join(data_dir, 'annotated_videos', f'{session_id}_annotated.mp4')
+    
+    if not os.path.exists(video_path):
+        return jsonify({'error': '未找到该视频'}), 404
+    
+    return send_file(
+        video_path,
+        mimetype='video/mp4',
+        as_attachment=False
+    )
+
+
+@api.route('/analyze/frame/annotated', methods=['POST'])
+def analyze_frame_annotated():
+    """
+    Analyze a single frame and return annotated image.
+    
+    Request:
+        - file: Image file (jpg, png)
+        - shooting_hand: 'left' or 'right' (optional)
+    
+    Response:
+        - Annotated image with skeleton overlay
+    """
+    if 'file' not in request.files:
+        return jsonify({'error': '没有上传文件'}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({'error': '没有选择文件'}), 400
+    
+    try:
+        # Read image
+        file_bytes = file.read()
+        nparr = np.frombuffer(file_bytes, np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if frame is None:
+            return jsonify({'error': '无法读取图像文件'}), 400
+        
+        shooting_hand = request.form.get('shooting_hand', 'right')
+        
+        # Get analyzer from app context
+        analyzer_service = current_app.config.get('analyzer_service')
+        
+        if analyzer_service is None:
+            return jsonify({'error': '分析服务未配置'}), 500
+        
+        # Get annotated frame
+        annotated_frame = analyzer_service.get_annotated_frame(
+            frame, 
+            shooting_hand,
+            show_angles=True,
+            show_feedback=True
+        )
+        
+        # Encode to JPEG
+        _, buffer = cv2.imencode('.jpg', annotated_frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
+        
+        from io import BytesIO
+        return send_file(
+            BytesIO(buffer.tobytes()),
+            mimetype='image/jpeg'
+        )
+        
+    except Exception as e:
+        return jsonify({'error': f'分析失败: {str(e)}'}), 500

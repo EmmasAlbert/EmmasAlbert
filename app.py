@@ -108,6 +108,11 @@ def create_app(config=None):
         """Serve the analysis page."""
         return render_template('analysis.html')
     
+    @app.route('/realtime')
+    def realtime():
+        """Serve the realtime detection page."""
+        return render_template('realtime.html')
+    
     @app.route('/history')
     def history():
         """Serve the training history page."""
