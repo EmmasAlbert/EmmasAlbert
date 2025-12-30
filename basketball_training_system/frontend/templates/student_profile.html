@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人信息 - 篮球训练辅助系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="logo">🏀</span>
+            <span class="brand-text">篮球训练辅助系统</span>
+        </div>
+        <div class="nav-links" id="navLinks">
+            <a href="/" class="nav-link">首页</a>
+            <a href="/student" class="nav-link">我的训练</a>
+            <a href="/analysis" class="nav-link">视频分析</a>
+            <a href="/history" class="nav-link">训练记录</a>
+            <a href="#" class="nav-link" id="logoutBtn">登出</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="auth-container">
+            <div class="auth-card wide">
+                <h1>👤 完善个人信息</h1>
+                <p class="subtitle">请填写以下信息，方便教师管理和查看您的训练记录</p>
+                
+                <form id="profileForm" class="auth-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="real_name">真实姓名 <span class="required">*</span></label>
+                            <input type="text" id="real_name" name="real_name" required 
+                                   placeholder="请输入真实姓名">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="student_id">学号 <span class="required">*</span></label>
+                            <input type="text" id="student_id" name="student_id" required 
+                                   placeholder="请输入学号">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="school">学校 <span class="required">*</span></label>
+                        <input type="text" id="school" name="school" required 
+                               placeholder="请输入学校全称，例如：北京市第一中学">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="grade">年级 <span class="required">*</span></label>
+                            <select id="grade" name="grade" required>
+                                <option value="">请选择年级</option>
+                                <option value="小学一年级">小学一年级</option>
+                                <option value="小学二年级">小学二年级</option>
+                                <option value="小学三年级">小学三年级</option>
+                                <option value="小学四年级">小学四年级</option>
+                                <option value="小学五年级">小学五年级</option>
+                                <option value="小学六年级">小学六年级</option>
+                                <option value="初中一年级">初中一年级</option>
+                                <option value="初中二年级">初中二年级</option>
+                                <option value="初中三年级">初中三年级</option>
+                                <option value="高中一年级">高中一年级</option>
+                                <option value="高中二年级">高中二年级</option>
+                                <option value="高中三年级">高中三年级</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="class_name">班级 <span class="required">*</span></label>
+                            <input type="text" id="class_name" name="class_name" required 
+                                   placeholder="例如：1班、2班">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="teacher_id">选择指导教师</label>
+                        <select id="teacher_id" name="teacher_id">
+                            <option value="">暂不选择教师</option>
+                        </select>
+                        <p class="help-text">选择您的指导教师后，教师可以查看您的训练记录并给出建议</p>
+                    </div>
+                    
+                    <div class="error-message" id="errorMessage" style="display: none;"></div>
+                    <div class="success-message" id="successMessage" style="display: none;"></div>
+                    
+                    <button type="submit" class="btn btn-primary btn-large btn-block">
+                        保存信息
+                    </button>
+                </form>
+                
+                <div class="auth-footer">
+                    <a href="/student">← 返回我的训练</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>© 2024 篮球训练辅助系统 - 中小学生篮球训练平台</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        let currentUser = null;
+        
+        // 检查登录状态
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/auth/check');
+                const result = await response.json();
+                
+                if (!result.authenticated) {
+                    window.location.href = '/login';
+                    return null;
+                }
+                
+                if (result.user.role !== 'student') {
+                    window.location.href = '/teacher';
+                    return null;
+                }
+                
+                return result.user;
+            } catch (e) {
+                window.location.href = '/login';
+                return null;
+            }
+        }
+        
+        // 填充现有信息
+        function fillExistingInfo(user) {
+            if (user.real_name) document.getElementById('real_name').value = user.real_name;
+            if (user.student_id) document.getElementById('student_id').value = user.student_id;
+            if (user.school) document.getElementById('school').value = user.school;
+            if (user.grade) document.getElementById('grade').value = user.grade;
+            if (user.class_name) document.getElementById('class_name').value = user.class_name;
+            if (user.teacher_id) document.getElementById('teacher_id').value = user.teacher_id;
+        }
+        
+        // 加载教师列表
+        async function loadTeachers() {
+            try {
+                const response = await fetch('/api/auth/teachers');
+                const result = await response.json();
+                
+                const teacherSelect = document.getElementById('teacher_id');
+                
+                if (result.success && result.teachers.length > 0) {
+                    result.teachers.forEach(teacher => {
+                        const option = document.createElement('option');
+                        option.value = teacher.user_id;
+                        option.textContent = `${teacher.real_name || teacher.username} - ${teacher.school || '未知学校'}`;
+                        teacherSelect.appendChild(option);
+                    });
+                    
+                    // 如果用户已有教师，选中
+                    if (currentUser && currentUser.teacher_id) {
+                        teacherSelect.value = currentUser.teacher_id;
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load teachers:', e);
+            }
+        }
+        
+        // 表单提交
+        document.getElementById('profileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                real_name: document.getElementById('real_name').value,
+                student_id: document.getElementById('student_id').value,
+                school: document.getElementById('school').value,
+                grade: document.getElementById('grade').value,
+                class_name: document.getElementById('class_name').value
+            };
+            
+            const teacherId = document.getElementById('teacher_id').value;
+            if (teacherId) {
+                formData.teacher_id = teacherId;
+            }
+            
+            const errorDiv = document.getElementById('errorMessage');
+            const successDiv = document.getElementById('successMessage');
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/auth/profile', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    successDiv.textContent = '信息保存成功！';
+                    successDiv.style.display = 'block';
+                    
+                    // 如果选择了教师，分配给教师
+                    if (teacherId) {
+                        try {
+                            await fetch(`/api/auth/students/${currentUser.user_id}/assign-teacher`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ teacher_id: teacherId })
+                            });
+                        } catch (e) {
+                            console.log('Failed to assign teacher:', e);
+                        }
+                    }
+                    
+                    setTimeout(() => {
+                        window.location.href = '/student';
+                    }, 1500);
+                } else {
+                    errorDiv.textContent = result.error;
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                errorDiv.textContent = '保存失败，请稍后重试';
+                errorDiv.style.display = 'block';
+            }
+        });
+        
+        // 登出
+        async function logout() {
+            try {
+                await fetch('/api/auth/logout', { method: 'POST' });
+            } catch (e) {}
+            
+            localStorage.removeItem('session_id');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+        }
+        
+        // 初始化
+        (async () => {
+            currentUser = await checkAuth();
+            if (!currentUser) return;
+            
+            fillExistingInfo(currentUser);
+            await loadTeachers();
+            
+            // 登出按钮
+            document.getElementById('logoutBtn').addEventListener('click', (e) => {
+                e.preventDefault();
+                logout();
+            });
+        })();
+    </script>
+</body>
+</html>

@@ -13,6 +13,8 @@ Endpoints:
 - GET /api/auth/students/<class_name> - 获取班级学生列表
 """
 
+from datetime import datetime
+
 from flask import Blueprint, request, jsonify, current_app, g, make_response
 
 from .decorators import login_required, teacher_required, get_current_user
@@ -321,4 +323,194 @@ def check_auth():
     return jsonify({
         'authenticated': True,
         'user': user.to_dict()
+    })
+
+
+# ======== Student API Routes ========
+
+@auth_bp.route('/students/<student_id>/assign-teacher', methods=['POST'])
+@login_required
+def assign_teacher_to_student(student_id):
+    """
+    学生选择教师（学生自己操作）
+    
+    Path Parameters:
+        - student_id: 学生ID
+    
+    Request Body:
+        - teacher_id: 教师ID
+    """
+    auth_service = current_app.config.get('auth_service')
+    user = get_current_user()
+    
+    # 只能给自己分配教师
+    if user.user_id != student_id:
+        return jsonify({
+            'success': False,
+            'error': '只能为自己选择教师'
+        }), 403
+    
+    data = request.get_json()
+    if not data or not data.get('teacher_id'):
+        return jsonify({
+            'success': False,
+            'error': '请选择教师'
+        }), 400
+    
+    result = auth_service.assign_student_to_teacher(student_id, data['teacher_id'])
+    
+    if result['success']:
+        return jsonify(result)
+    else:
+        return jsonify(result), 400
+
+
+# ======== Teacher API Routes ========
+
+teacher_bp = Blueprint('teacher', __name__, url_prefix='/api/teacher')
+
+
+@teacher_bp.route('/student/<student_id>/sessions', methods=['GET'])
+@teacher_required
+def get_student_sessions(student_id):
+    """
+    获取学生的训练记录（教师专用）
+    """
+    auth_service = current_app.config.get('auth_service')
+    data_analyzer = current_app.config.get('data_analyzer')
+    
+    student = auth_service.get_user_by_id(student_id)
+    if student is None:
+        return jsonify({
+            'success': False,
+            'error': '学生不存在'
+        }), 404
+    
+    sessions = []
+    total_shots = 0
+    total_score = 0
+    
+    if data_analyzer:
+        # 获取学生的训练记录
+        for s in data_analyzer.sessions:
+            if s.get('user_id') == student_id:
+                sessions.append({
+                    'session_id': s['session_id'],
+                    'date': s['date'],
+                    'total_shots': s['statistics']['total_shots'],
+                    'form_quality_score': s['statistics']['form_quality_score']
+                })
+                total_shots += s['statistics']['total_shots']
+                total_score += s['statistics']['form_quality_score']
+    
+    avg_score = total_score / len(sessions) if sessions else None
+    
+    return jsonify({
+        'success': True,
+        'student': student.to_dict(),
+        'sessions': sessions,
+        'total_shots': total_shots,
+        'avg_score': avg_score
+    })
+
+
+@teacher_bp.route('/student/<student_id>/feedback', methods=['POST'])
+@teacher_required
+def send_feedback(student_id):
+    """
+    给学生发送反馈（教师专用）
+    """
+    auth_service = current_app.config.get('auth_service')
+    teacher = get_current_user()
+    
+    student = auth_service.get_user_by_id(student_id)
+    if student is None:
+        return jsonify({
+            'success': False,
+            'error': '学生不存在'
+        }), 404
+    
+    data = request.get_json()
+    if not data or not data.get('content'):
+        return jsonify({
+            'success': False,
+            'error': '反馈内容不能为空'
+        }), 400
+    
+    # 保存反馈
+    feedback = {
+        'teacher_id': teacher.user_id,
+        'teacher_name': teacher.real_name or teacher.username,
+        'content': data['content'],
+        'created_at': datetime.now().isoformat()
+    }
+    
+    auth_service.add_feedback(student_id, feedback)
+    
+    return jsonify({
+        'success': True,
+        'message': '反馈已发送'
+    })
+
+
+# ======== Student Self API Routes ========
+
+student_bp = Blueprint('student', __name__, url_prefix='/api/student')
+
+
+@student_bp.route('/plans', methods=['GET'])
+@login_required
+def get_plans():
+    """
+    获取学生的训练计划
+    """
+    auth_service = current_app.config.get('auth_service')
+    user = get_current_user()
+    
+    plans = auth_service.get_user_plans(user.user_id)
+    
+    return jsonify({
+        'success': True,
+        'plans': plans
+    })
+
+
+@student_bp.route('/plans', methods=['PUT'])
+@login_required
+def update_plans():
+    """
+    更新学生的训练计划
+    """
+    auth_service = current_app.config.get('auth_service')
+    user = get_current_user()
+    
+    data = request.get_json()
+    if not data or 'plans' not in data:
+        return jsonify({
+            'success': False,
+            'error': '请提供训练计划'
+        }), 400
+    
+    auth_service.save_user_plans(user.user_id, data['plans'])
+    
+    return jsonify({
+        'success': True,
+        'message': '训练计划已保存'
+    })
+
+
+@student_bp.route('/feedback', methods=['GET'])
+@login_required
+def get_feedback():
+    """
+    获取学生收到的教师反馈
+    """
+    auth_service = current_app.config.get('auth_service')
+    user = get_current_user()
+    
+    feedback = auth_service.get_user_feedback(user.user_id)
+    
+    return jsonify({
+        'success': True,
+        'feedback': feedback
     })

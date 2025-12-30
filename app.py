@@ -19,7 +19,7 @@ from basketball_training_system.backend.api.routes import api
 from basketball_training_system.backend.api.service import create_service
 from basketball_training_system.backend.utils.data_analyzer import DataAnalyzer
 from basketball_training_system.backend.auth.auth_service import AuthService
-from basketball_training_system.backend.auth.routes import auth_bp
+from basketball_training_system.backend.auth.routes import auth_bp, teacher_bp, student_bp
 
 
 def create_app(config=None):
@@ -86,6 +86,8 @@ def create_app(config=None):
     # Register blueprints
     app.register_blueprint(api)
     app.register_blueprint(auth_bp)
+    app.register_blueprint(teacher_bp)
+    app.register_blueprint(student_bp)
     
     # Frontend routes
     @app.route('/')
@@ -127,6 +129,16 @@ def create_app(config=None):
     def teacher_dashboard():
         """Serve the teacher dashboard page."""
         return render_template('teacher_dashboard.html')
+    
+    @app.route('/student')
+    def student_dashboard():
+        """Serve the student dashboard page."""
+        return render_template('student_dashboard.html')
+    
+    @app.route('/student/profile')
+    def student_profile():
+        """Serve the student profile page."""
+        return render_template('student_profile.html')
     
     return app
 

@@ -324,7 +324,7 @@
             <span class="logo">🏀</span>
             <span class="brand-text">篮球训练辅助系统</span>
         </div>
-        <div class="nav-links">
+        <div class="nav-links" id="navLinks">
             <a href="/" class="nav-link">首页</a>
             <a href="/analysis" class="nav-link">视频分析</a>
             <a href="/realtime" class="nav-link active">实时检测</a>
@@ -493,5 +493,54 @@
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js/realtime.js') }}"></script>
+    <script>
+        // 检查登录状态
+        (async () => {
+            try {
+                const response = await fetch('/api/auth/check');
+                const result = await response.json();
+                
+                if (!result.authenticated) {
+                    window.location.href = '/login';
+                    return;
+                }
+                
+                const user = result.user;
+                const navLinks = document.getElementById('navLinks');
+                
+                if (user.role === 'teacher') {
+                    navLinks.innerHTML = `
+                        <a href="/" class="nav-link">首页</a>
+                        <a href="/teacher" class="nav-link">学生管理</a>
+                        <a href="/analysis" class="nav-link">视频分析</a>
+                        <a href="/realtime" class="nav-link active">实时检测</a>
+                        <span class="nav-user">👨‍🏫 ${user.real_name || user.username}</span>
+                        <a href="#" class="nav-link" onclick="logout()">登出</a>
+                    `;
+                } else {
+                    navLinks.innerHTML = `
+                        <a href="/" class="nav-link">首页</a>
+                        <a href="/student" class="nav-link">我的训练</a>
+                        <a href="/analysis" class="nav-link">视频分析</a>
+                        <a href="/realtime" class="nav-link active">实时检测</a>
+                        <a href="/history" class="nav-link">训练记录</a>
+                        <span class="nav-user">👨‍🎓 ${user.real_name || user.username}</span>
+                        <a href="#" class="nav-link" onclick="logout()">登出</a>
+                    `;
+                }
+            } catch (e) {
+                window.location.href = '/login';
+            }
+        })();
+        
+        async function logout() {
+            try {
+                await fetch('/api/auth/logout', { method: 'POST' });
+            } catch (e) {}
+            localStorage.removeItem('session_id');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+        }
+    </script>
 </body>
 </html>

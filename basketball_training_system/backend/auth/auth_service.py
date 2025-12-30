@@ -350,7 +350,7 @@ class AuthService:
             }
         
         # 允许更新的字段
-        allowed_fields = ['real_name', 'class_name', 'grade', 'school', 'is_active']
+        allowed_fields = ['real_name', 'class_name', 'grade', 'school', 'is_active', 'student_id', 'teacher_id']
         
         for field, value in updates.items():
             if field in allowed_fields:
@@ -427,3 +427,78 @@ class AuthService:
             self._save_users()
         
         return True
+    
+    def get_user_plans(self, user_id: str) -> List[Dict[str, Any]]:
+        """
+        获取用户的训练计划
+        
+        Args:
+            user_id: 用户ID
+            
+        Returns:
+            训练计划列表
+        """
+        plans_file = os.path.join(self.data_dir, f'plans_{user_id}.json')
+        if os.path.exists(plans_file):
+            try:
+                with open(plans_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    return data.get('plans', [])
+            except (json.JSONDecodeError, KeyError):
+                pass
+        return []
+    
+    def save_user_plans(self, user_id: str, plans: List[Dict[str, Any]]) -> None:
+        """
+        保存用户的训练计划
+        
+        Args:
+            user_id: 用户ID
+            plans: 训练计划列表
+        """
+        plans_file = os.path.join(self.data_dir, f'plans_{user_id}.json')
+        with open(plans_file, 'w', encoding='utf-8') as f:
+            json.dump({'plans': plans}, f, ensure_ascii=False, indent=2)
+    
+    def add_feedback(self, user_id: str, feedback: Dict[str, Any]) -> None:
+        """
+        为用户添加反馈
+        
+        Args:
+            user_id: 用户ID
+            feedback: 反馈内容
+        """
+        feedback_file = os.path.join(self.data_dir, f'feedback_{user_id}.json')
+        existing = []
+        if os.path.exists(feedback_file):
+            try:
+                with open(feedback_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    existing = data.get('feedback', [])
+            except (json.JSONDecodeError, KeyError):
+                pass
+        
+        existing.append(feedback)
+        
+        with open(feedback_file, 'w', encoding='utf-8') as f:
+            json.dump({'feedback': existing}, f, ensure_ascii=False, indent=2)
+    
+    def get_user_feedback(self, user_id: str) -> List[Dict[str, Any]]:
+        """
+        获取用户收到的反馈
+        
+        Args:
+            user_id: 用户ID
+            
+        Returns:
+            反馈列表
+        """
+        feedback_file = os.path.join(self.data_dir, f'feedback_{user_id}.json')
+        if os.path.exists(feedback_file):
+            try:
+                with open(feedback_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    return data.get('feedback', [])
+            except (json.JSONDecodeError, KeyError):
+                pass
+        return []

@@ -45,6 +45,7 @@ class User:
     class_name: str = ""
     grade: str = ""  # 年级
     school: str = ""  # 学校
+    student_id: str = ""  # 学号
     created_at: datetime = field(default_factory=datetime.now)
     last_login: Optional[datetime] = None
     is_active: bool = True
@@ -111,6 +112,7 @@ class User:
             'class_name': self.class_name,
             'grade': self.grade,
             'school': self.school,
+            'student_id': self.student_id,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'last_login': self.last_login.isoformat() if self.last_login else None,
             'is_active': self.is_active,
@@ -159,6 +161,7 @@ class User:
             class_name=data.get('class_name', ''),
             grade=data.get('grade', ''),
             school=data.get('school', ''),
+            student_id=data.get('student_id', ''),
             created_at=created_at,
             last_login=last_login,
             is_active=data.get('is_active', True),

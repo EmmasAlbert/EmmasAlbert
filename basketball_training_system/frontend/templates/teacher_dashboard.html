@@ -89,12 +89,21 @@
 
         <!-- 学生训练详情弹窗 -->
         <div class="modal" id="studentModal" style="display: none;">
-            <div class="modal-content">
+            <div class="modal-content" style="max-width: 700px;">
                 <div class="modal-header">
                     <h3>学生训练详情</h3>
                     <button class="btn-icon modal-close" id="closeModal">✕</button>
                 </div>
                 <div class="modal-body" id="studentDetail">
+                </div>
+                <div class="modal-footer" style="border-top: 1px solid #e9ecef; padding-top: 1rem; margin-top: 1rem;">
+                    <h4>📝 给学生反馈</h4>
+                    <form id="feedbackForm" style="margin-top: 0.5rem;">
+                        <input type="hidden" id="feedbackStudentId">
+                        <textarea id="feedbackContent" placeholder="输入训练建议和反馈..." 
+                                  style="width: 100%; height: 80px; padding: 0.75rem; border: 1px solid #dee2e6; border-radius: 8px; resize: vertical;"></textarea>
+                        <button type="submit" class="btn btn-primary" style="margin-top: 0.5rem;">发送反馈</button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -206,19 +215,103 @@
         }
         
         // 查看学生详情
-        function viewStudent(studentId) {
+        async function viewStudent(studentId) {
             const modal = document.getElementById('studentModal');
             const detail = document.getElementById('studentDetail');
             
             detail.innerHTML = '<p>加载中...</p>';
             modal.style.display = 'flex';
+            document.getElementById('feedbackStudentId').value = studentId;
             
-            // 这里可以加载学生的训练详情
-            detail.innerHTML = `
-                <p>学生ID: ${studentId}</p>
-                <p>详细训练数据功能开发中...</p>
-            `;
+            try {
+                // 获取学生训练数据
+                const response = await fetch(`/api/teacher/student/${studentId}/sessions`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    const student = result.student;
+                    const sessions = result.sessions || [];
+                    
+                    let html = `
+                        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                            <h4 style="margin: 0 0 0.5rem 0;">👨‍🎓 ${student.real_name || student.username}</h4>
+                            <p style="margin: 0; color: #6c757d;">
+                                ${student.school || '未设置学校'} | ${student.grade || ''} ${student.class_name || ''} | 学号: ${student.student_id || '未设置'}
+                            </p>
+                        </div>
+                        <h4>📊 训练统计</h4>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem;">
+                            <div style="background: #e8f4fd; padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: 700; color: #667eea;">${sessions.length}</div>
+                                <div style="color: #6c757d;">训练次数</div>
+                            </div>
+                            <div style="background: #d4edda; padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: 700; color: #28a745;">${result.avg_score ? (result.avg_score * 100).toFixed(0) + '%' : '--'}</div>
+                                <div style="color: #6c757d;">平均评分</div>
+                            </div>
+                            <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 1.5rem; font-weight: 700; color: #856404;">${result.total_shots || 0}</div>
+                                <div style="color: #6c757d;">总投篮数</div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    if (sessions.length > 0) {
+                        html += `<h4>📅 最近训练记录</h4><div style="max-height: 200px; overflow-y: auto;">`;
+                        sessions.slice(0, 10).forEach(session => {
+                            html += `
+                                <div style="display: flex; justify-content: space-between; padding: 0.75rem; border-bottom: 1px solid #e9ecef;">
+                                    <span>${new Date(session.date).toLocaleString('zh-CN')}</span>
+                                    <span>投篮 ${session.total_shots} 次，评分 ${(session.form_quality_score * 100).toFixed(0)}%</span>
+                                </div>
+                            `;
+                        });
+                        html += `</div>`;
+                    } else {
+                        html += `<p style="color: #6c757d;">该学生暂无训练记录</p>`;
+                    }
+                    
+                    detail.innerHTML = html;
+                } else {
+                    detail.innerHTML = `<p style="color: #dc3545;">${result.error || '加载失败'}</p>`;
+                }
+            } catch (e) {
+                detail.innerHTML = `<p style="color: #dc3545;">加载失败: ${e.message}</p>`;
+            }
         }
+        
+        // 发送反馈
+        document.getElementById('feedbackForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const studentId = document.getElementById('feedbackStudentId').value;
+            const content = document.getElementById('feedbackContent').value.trim();
+            
+            if (!content) {
+                alert('请输入反馈内容');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/teacher/student/${studentId}/feedback`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: content })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('反馈已发送！');
+                    document.getElementById('feedbackContent').value = '';
+                    document.getElementById('studentModal').style.display = 'none';
+                } else {
+                    alert(result.error || '发送失败');
+                }
+            } catch (e) {
+                alert('发送失败: ' + e.message);
+            }
+        });
         
         // 登出
         async function logout() {
