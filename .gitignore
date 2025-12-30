@@ -125,6 +125,10 @@ data/annotations/*
 !data/models/.gitkeep
 !data/annotations/.gitkeep
 
+# YOLOv8 model weights (should be downloaded, not committed)
+*.pt
+runs/
+
 # Temporary files
 *.tmp
 *.temp
