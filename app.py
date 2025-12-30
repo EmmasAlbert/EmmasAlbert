@@ -8,6 +8,7 @@ This application provides:
 - Pose estimation and shooting form analysis
 - Training session management and progress tracking
 - Visual feedback and reports
+- User authentication with Teacher/Student roles
 """
 
 import os
@@ -17,6 +18,8 @@ from flask_cors import CORS
 from basketball_training_system.backend.api.routes import api
 from basketball_training_system.backend.api.service import create_service
 from basketball_training_system.backend.utils.data_analyzer import DataAnalyzer
+from basketball_training_system.backend.auth.auth_service import AuthService
+from basketball_training_system.backend.auth.routes import auth_bp
 
 
 def create_app(config=None):
@@ -54,6 +57,10 @@ def create_app(config=None):
     data_dir = app.config['DATA_DIR']
     os.makedirs(data_dir, exist_ok=True)
     
+    # Initialize authentication service
+    auth_service = AuthService(data_dir=data_dir)
+    app.config['auth_service'] = auth_service
+    
     # Create analyzer service (may fail if ultralytics not installed)
     try:
         analyzer_service = create_service(
@@ -76,14 +83,25 @@ def create_app(config=None):
         'show_angles': True
     }
     
-    # Register API blueprint
+    # Register blueprints
     app.register_blueprint(api)
+    app.register_blueprint(auth_bp)
     
     # Frontend routes
     @app.route('/')
     def index():
         """Serve the main application page."""
         return render_template('index.html')
+    
+    @app.route('/login')
+    def login_page():
+        """Serve the login page."""
+        return render_template('login.html')
+    
+    @app.route('/register')
+    def register_page():
+        """Serve the registration page."""
+        return render_template('register.html')
     
     @app.route('/analysis')
     def analysis():
@@ -99,6 +117,11 @@ def create_app(config=None):
     def settings_page():
         """Serve the settings page."""
         return render_template('settings.html')
+    
+    @app.route('/teacher')
+    def teacher_dashboard():
+        """Serve the teacher dashboard page."""
+        return render_template('teacher_dashboard.html')
     
     return app
 

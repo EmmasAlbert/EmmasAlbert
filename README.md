@@ -57,6 +57,11 @@ EmmasAlbert/
 ├── basketball_training_system/ # 核心模块
 │   ├── __init__.py
 │   ├── backend/               # 后端模块
+│   │   ├── auth/             # 用户认证模块
+│   │   │   ├── models.py         # 用户模型
+│   │   │   ├── auth_service.py   # 认证服务
+│   │   │   ├── routes.py         # 认证API路由
+│   │   │   └── decorators.py     # 权限装饰器
 │   │   ├── models/           # 检测与分析模型
 │   │   │   ├── detector.py       # YOLOv8目标检测
 │   │   │   ├── pose_estimator.py # 姿态估计
@@ -70,6 +75,9 @@ EmmasAlbert/
 │   │       └── service.py        # 分析服务
 │   ├── frontend/             # 前端模块
 │   │   ├── templates/        # HTML模板
+│   │   │   ├── login.html        # 登录页面
+│   │   │   ├── register.html     # 注册页面
+│   │   │   └── teacher_dashboard.html # 教师管理页面
 │   │   └── static/           # 静态资源 (CSS/JS)
 │   └── tests/                # 单元测试
 └── data/                     # 数据目录
@@ -80,7 +88,23 @@ EmmasAlbert/
 
 ## 🔧 系统功能
 
-### 1. 视频分析
+### 1. 用户认证系统
+
+系统支持**教师**和**学生**两种用户角色：
+
+**教师功能：**
+- 👨‍🏫 管理学生账户
+- 📊 查看所有学生的训练数据
+- 📋 按班级筛选学生
+- 📈 监控学生训练进度
+
+**学生功能：**
+- 🏀 上传训练视频进行分析
+- 📊 查看个人训练记录
+- 📈 追踪训练进步趋势
+- 💡 获取投篮姿势改进建议
+
+### 2. 视频分析
 
 上传篮球训练视频，系统自动：
 - 检测视频中的篮球和运动员
@@ -88,14 +112,14 @@ EmmasAlbert/
 - 计算关键角度指标
 - 生成姿势质量评分和改进建议
 
-### 2. 实时反馈
+### 3. 实时反馈
 
 - 肘部角度分析：理想范围 85°-105°
 - 肩部角度分析：理想范围 80°-120°
 - 膝盖弯曲分析：理想范围 140°-170°
 - 中文反馈建议
 
-### 3. 训练记录
+### 4. 训练记录
 
 - 保存每次训练分析结果
 - 查看历史训练数据
@@ -103,6 +127,21 @@ EmmasAlbert/
 - 导出数据（JSON/CSV）
 
 ## 🖥️ API 接口
+
+### 认证接口
+
+| 接口 | 方法 | 描述 |
+|------|------|------|
+| `/api/auth/register` | POST | 用户注册 |
+| `/api/auth/login` | POST | 用户登录 |
+| `/api/auth/logout` | POST | 用户登出 |
+| `/api/auth/profile` | GET | 获取当前用户信息 |
+| `/api/auth/profile` | PUT | 更新用户信息 |
+| `/api/auth/teachers` | GET | 获取教师列表 |
+| `/api/auth/students` | GET | 获取学生列表（教师专用） |
+| `/api/auth/check` | GET | 检查登录状态 |
+
+### 分析接口
 
 | 接口 | 方法 | 描述 |
 |------|------|------|

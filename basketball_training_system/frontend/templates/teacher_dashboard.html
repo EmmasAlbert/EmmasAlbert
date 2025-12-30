@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教师管理 - 篮球训练辅助系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="logo">🏀</span>
+            <span class="brand-text">篮球训练辅助系统</span>
+        </div>
+        <div class="nav-links">
+            <a href="/" class="nav-link">首页</a>
+            <a href="/teacher" class="nav-link active">学生管理</a>
+            <a href="/analysis" class="nav-link">视频分析</a>
+            <a href="/history" class="nav-link">训练记录</a>
+            <a href="#" class="nav-link" id="logoutBtn">登出</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="dashboard-header">
+            <h1>👨‍🏫 教师管理中心</h1>
+            <p class="subtitle">欢迎，<span id="teacherName">教师</span></p>
+        </div>
+
+        <!-- 统计概览 -->
+        <section class="stats-overview">
+            <div class="stat-card">
+                <div class="stat-icon">👨‍🎓</div>
+                <div class="stat-info">
+                    <div class="stat-number" id="studentCount">0</div>
+                    <div class="stat-label">学生总数</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📚</div>
+                <div class="stat-info">
+                    <div class="stat-number" id="classCount">0</div>
+                    <div class="stat-label">管理班级</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🏀</div>
+                <div class="stat-info">
+                    <div class="stat-number" id="trainingCount">0</div>
+                    <div class="stat-label">训练次数</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 学生列表 -->
+        <section class="students-section">
+            <div class="section-header">
+                <h2>📋 学生列表</h2>
+                <div class="filter-controls">
+                    <select id="classFilter">
+                        <option value="">所有班级</option>
+                    </select>
+                    <button class="btn btn-secondary" id="refreshBtn">刷新</button>
+                </div>
+            </div>
+            
+            <div class="students-table-container">
+                <table class="data-table" id="studentsTable">
+                    <thead>
+                        <tr>
+                            <th>姓名</th>
+                            <th>用户名</th>
+                            <th>年级</th>
+                            <th>班级</th>
+                            <th>训练次数</th>
+                            <th>最后登录</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentsTableBody">
+                        <tr>
+                            <td colspan="7" class="loading-text">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 学生训练详情弹窗 -->
+        <div class="modal" id="studentModal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>学生训练详情</h3>
+                    <button class="btn-icon modal-close" id="closeModal">✕</button>
+                </div>
+                <div class="modal-body" id="studentDetail">
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>© 2024 篮球训练辅助系统 - 中小学生篮球训练平台</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        // 检查登录状态和权限
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/auth/check');
+                const result = await response.json();
+                
+                if (!result.authenticated) {
+                    window.location.href = '/login';
+                    return null;
+                }
+                
+                if (result.user.role !== 'teacher') {
+                    alert('只有教师可以访问此页面');
+                    window.location.href = '/analysis';
+                    return null;
+                }
+                
+                return result.user;
+            } catch (e) {
+                window.location.href = '/login';
+                return null;
+            }
+        }
+        
+        // 加载学生列表
+        async function loadStudents(className = '') {
+            const tableBody = document.getElementById('studentsTableBody');
+            tableBody.innerHTML = '<tr><td colspan="7" class="loading-text">加载中...</td></tr>';
+            
+            try {
+                let url = '/api/auth/students';
+                if (className) {
+                    url += `?class_name=${encodeURIComponent(className)}`;
+                }
+                
+                const response = await fetch(url);
+                const result = await response.json();
+                
+                if (!result.success) {
+                    tableBody.innerHTML = `<tr><td colspan="7" class="loading-text">${result.error}</td></tr>`;
+                    return;
+                }
+                
+                const students = result.students;
+                
+                if (students.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="7" class="loading-text">暂无学生</td></tr>';
+                    return;
+                }
+                
+                // 更新统计
+                document.getElementById('studentCount').textContent = students.length;
+                
+                // 收集班级
+                const classes = new Set();
+                students.forEach(s => {
+                    if (s.class_name) classes.add(s.class_name);
+                });
+                document.getElementById('classCount').textContent = classes.size;
+                
+                // 计算训练次数
+                let totalTraining = 0;
+                students.forEach(s => {
+                    totalTraining += (s.training_sessions || []).length;
+                });
+                document.getElementById('trainingCount').textContent = totalTraining;
+                
+                // 更新班级筛选下拉框
+                const classFilter = document.getElementById('classFilter');
+                classFilter.innerHTML = '<option value="">所有班级</option>';
+                classes.forEach(c => {
+                    const option = document.createElement('option');
+                    option.value = c;
+                    option.textContent = c;
+                    classFilter.appendChild(option);
+                });
+                
+                // 渲染表格
+                tableBody.innerHTML = students.map(student => `
+                    <tr>
+                        <td>${student.real_name || '-'}</td>
+                        <td>${student.username}</td>
+                        <td>${student.grade || '-'}</td>
+                        <td>${student.class_name || '-'}</td>
+                        <td>${(student.training_sessions || []).length}</td>
+                        <td>${student.last_login ? new Date(student.last_login).toLocaleString('zh-CN') : '从未登录'}</td>
+                        <td>
+                            <button class="btn btn-secondary btn-small" onclick="viewStudent('${student.user_id}')">
+                                查看详情
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+                
+            } catch (e) {
+                tableBody.innerHTML = '<tr><td colspan="7" class="loading-text">加载失败</td></tr>';
+            }
+        }
+        
+        // 查看学生详情
+        function viewStudent(studentId) {
+            const modal = document.getElementById('studentModal');
+            const detail = document.getElementById('studentDetail');
+            
+            detail.innerHTML = '<p>加载中...</p>';
+            modal.style.display = 'flex';
+            
+            // 这里可以加载学生的训练详情
+            detail.innerHTML = `
+                <p>学生ID: ${studentId}</p>
+                <p>详细训练数据功能开发中...</p>
+            `;
+        }
+        
+        // 登出
+        async function logout() {
+            try {
+                await fetch('/api/auth/logout', { method: 'POST' });
+            } catch (e) {}
+            
+            localStorage.removeItem('session_id');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+        }
+        
+        // 初始化
+        (async () => {
+            const user = await checkAuth();
+            if (!user) return;
+            
+            document.getElementById('teacherName').textContent = user.real_name || user.username;
+            
+            await loadStudents();
+            
+            // 班级筛选
+            document.getElementById('classFilter').addEventListener('change', (e) => {
+                loadStudents(e.target.value);
+            });
+            
+            // 刷新按钮
+            document.getElementById('refreshBtn').addEventListener('click', () => {
+                loadStudents(document.getElementById('classFilter').value);
+            });
+            
+            // 登出按钮
+            document.getElementById('logoutBtn').addEventListener('click', (e) => {
+                e.preventDefault();
+                logout();
+            });
+            
+            // 关闭弹窗
+            document.getElementById('closeModal').addEventListener('click', () => {
+                document.getElementById('studentModal').style.display = 'none';
+            });
+            
+            document.getElementById('studentModal').addEventListener('click', (e) => {
+                if (e.target.id === 'studentModal') {
+                    document.getElementById('studentModal').style.display = 'none';
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
