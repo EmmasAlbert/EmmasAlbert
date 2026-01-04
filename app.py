@@ -9,6 +9,7 @@ This application provides:
 - Training session management and progress tracking
 - Visual feedback and reports
 - User authentication with Teacher/Student roles
+- MySQL database storage support
 """
 
 import os
@@ -21,13 +22,22 @@ from basketball_training_system.backend.utils.data_analyzer import DataAnalyzer
 from basketball_training_system.backend.auth.auth_service import AuthService
 from basketball_training_system.backend.auth.routes import auth_bp, teacher_bp, student_bp
 
+# Try to import database auth service
+try:
+    from basketball_training_system.backend.auth import AuthServiceDB, DB_AUTH_AVAILABLE
+except ImportError:
+    AuthServiceDB = None
+    DB_AUTH_AVAILABLE = False
 
-def create_app(config=None):
+
+def create_app(config=None, use_database=False, db_config=None):
     """
     Application factory for creating the Flask app.
     
     Args:
         config: Optional configuration dictionary.
+        use_database: Whether to use MySQL database for storage.
+        db_config: Database configuration dictionary.
         
     Returns:
         Configured Flask application.
@@ -45,6 +55,7 @@ def create_app(config=None):
         'DATA_DIR': os.environ.get('DATA_DIR', 'data'),
         'MODEL_PATH': os.environ.get('MODEL_PATH', None),
         'POSE_MODEL_PATH': os.environ.get('POSE_MODEL_PATH', None),
+        'USE_DATABASE': use_database or os.environ.get('USE_DATABASE', 'false').lower() == 'true',
     })
     
     if config:
@@ -58,7 +69,27 @@ def create_app(config=None):
     os.makedirs(data_dir, exist_ok=True)
     
     # Initialize authentication service
-    auth_service = AuthService(data_dir=data_dir)
+    if app.config['USE_DATABASE'] and DB_AUTH_AVAILABLE:
+        # Use MySQL database storage
+        try:
+            if db_config is None:
+                db_config = {
+                    'host': os.environ.get('DB_HOST', 'localhost'),
+                    'port': int(os.environ.get('DB_PORT', '3306')),
+                    'user': os.environ.get('DB_USER', 'root'),
+                    'password': os.environ.get('DB_PASSWORD', ''),
+                    'database': os.environ.get('DB_NAME', 'basketball_training'),
+                }
+            auth_service = AuthServiceDB(db_config=db_config)
+            print("✓ 使用 MySQL 数据库存储")
+        except Exception as e:
+            print(f"⚠ 无法连接数据库，回退到 JSON 文件存储: {e}")
+            auth_service = AuthService(data_dir=data_dir)
+    else:
+        # Use JSON file storage (default)
+        auth_service = AuthService(data_dir=data_dir)
+        print("✓ 使用 JSON 文件存储")
+    
     app.config['auth_service'] = auth_service
     
     # Create analyzer service (may fail if ultralytics not installed)
@@ -158,6 +189,14 @@ if __name__ == '__main__':
     parser.add_argument('--pose-model', help='Path to custom pose model')
     parser.add_argument('--data-dir', default='data', help='Directory for data storage')
     
+    # Database options
+    parser.add_argument('--use-database', action='store_true', help='Use MySQL database for storage')
+    parser.add_argument('--db-host', default='localhost', help='Database host')
+    parser.add_argument('--db-port', type=int, default=3306, help='Database port')
+    parser.add_argument('--db-user', default='root', help='Database user')
+    parser.add_argument('--db-password', default='', help='Database password')
+    parser.add_argument('--db-name', default='basketball_training', help='Database name')
+    
     args = parser.parse_args()
     
     # Update config with command line arguments
@@ -167,7 +206,20 @@ if __name__ == '__main__':
         'DATA_DIR': args.data_dir
     }
     
-    app = create_app(config)
+    # Database config
+    db_config = None
+    if args.use_database:
+        db_config = {
+            'host': args.db_host,
+            'port': args.db_port,
+            'user': args.db_user,
+            'password': args.db_password,
+            'database': args.db_name,
+        }
+    
+    app = create_app(config, use_database=args.use_database, db_config=db_config)
+    
+    storage_mode = "MySQL 数据库" if args.use_database else "JSON 文件"
     
     print(f"""
     ========================================
@@ -175,6 +227,7 @@ if __name__ == '__main__':
     ========================================
     
     访问地址: http://{args.host}:{args.port}
+    数据存储: {storage_mode}
     
     API 文档:
     - POST /api/analyze/video  - 分析训练视频

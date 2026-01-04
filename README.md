@@ -29,6 +29,7 @@
 
 - Python 3.8+
 - CUDA 11.0+ (GPU加速，可选)
+- MySQL 5.7+ 或 8.0+ (数据库存储，可选)
 
 ### 安装步骤
 
@@ -42,6 +43,41 @@ pip install -r requirements.txt
 
 # 启动应用
 python app.py
+```
+
+### 数据库配置 (可选)
+
+系统支持两种数据存储方式：
+
+#### 1. JSON文件存储（默认）
+
+无需额外配置，数据存储在 `data/` 目录下。
+
+#### 2. MySQL数据库存储
+
+首先创建数据库：
+
+```sql
+CREATE DATABASE basketball_training CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+然后通过环境变量配置数据库连接：
+
+```bash
+export DB_HOST=localhost
+export DB_PORT=3306
+export DB_USER=root
+export DB_PASSWORD=your_password
+export DB_NAME=basketball_training
+
+# 启动应用（使用数据库模式）
+python app.py --use-database
+```
+
+或者在启动时指定数据库参数：
+
+```bash
+python app.py --db-host localhost --db-port 3306 --db-user root --db-password your_password --db-name basketball_training
 ```
 
 ### 访问系统
@@ -59,9 +95,13 @@ EmmasAlbert/
 │   ├── backend/               # 后端模块
 │   │   ├── auth/             # 用户认证模块
 │   │   │   ├── models.py         # 用户模型
-│   │   │   ├── auth_service.py   # 认证服务
+│   │   │   ├── auth_service.py   # 认证服务 (JSON存储)
+│   │   │   ├── auth_service_db.py # 认证服务 (MySQL存储)
 │   │   │   ├── routes.py         # 认证API路由
 │   │   │   └── decorators.py     # 权限装饰器
+│   │   ├── database/         # 数据库模块 🆕
+│   │   │   ├── models.py         # 数据库表模型
+│   │   │   └── db_manager.py     # 数据库管理器
 │   │   ├── models/           # 检测与分析模型
 │   │   │   ├── detector.py       # YOLOv8目标检测
 │   │   │   ├── pose_estimator.py # 姿态估计
@@ -88,6 +128,19 @@ EmmasAlbert/
     └── models/              # 模型文件
 ```
 
+## 🗄️ 数据库结构
+
+系统使用MySQL数据库存储用户和训练数据，包含以下数据表：
+
+| 表名 | 描述 |
+|------|------|
+| `users` | 用户信息表（教师/学生） |
+| `sessions` | 登录会话表 |
+| `training_sessions` | 训练记录表 |
+| `training_plans` | 训练计划表 |
+| `feedback` | 教师反馈表 |
+| `teacher_classes` | 教师班级管理表 |
+
 ## 🔧 系统功能
 
 ### 1. 用户认证系统
@@ -99,12 +152,15 @@ EmmasAlbert/
 - 📊 查看所有学生的训练数据
 - 📋 按班级筛选学生
 - 📈 监控学生训练进度
+- 💬 给学生发送训练建议
 
 **学生功能：**
 - 🏀 上传训练视频进行分析
 - 📊 查看个人训练记录
 - 📈 追踪训练进步趋势
 - 💡 获取投篮姿势改进建议
+- 📝 设置训练计划
+- 📖 查看教师反馈
 
 ### 2. 视频分析
 
@@ -115,7 +171,7 @@ EmmasAlbert/
 - 生成姿势质量评分和改进建议
 - **生成带骨架标注的分析视频**
 
-### 3. 实时检测 🆕
+### 3. 实时检测
 
 通过摄像头或上传视频进行实时检测：
 - 📷 **摄像头模式**：实时捕获画面，即时显示检测结果
@@ -186,6 +242,7 @@ pytest basketball_training_system/tests/ --cov=basketball_training_system --cov-
 - **深度学习**: YOLOv8, PyTorch
 - **计算机视觉**: OpenCV
 - **后端框架**: Flask
+- **数据库**: MySQL (pymysql)
 - **数据处理**: NumPy
 - **可视化**: Matplotlib
 
