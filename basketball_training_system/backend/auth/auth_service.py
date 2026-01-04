@@ -7,14 +7,19 @@ Features:
 - Login/logout functionality
 - Session management
 - User data persistence (JSON file storage)
+- Secure password hashing with bcrypt
 """
 
 import os
 import json
+import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 
-from .models import User, UserRole, UserSession
+from .models import User, UserRole, UserSession, PasswordPolicy
+
+# 设置日志
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
@@ -53,8 +58,9 @@ class AuthService:
                     for user_data in data.get('users', []):
                         user = User.from_dict(user_data)
                         self.users[user.user_id] = user
+                logger.info(f"已加载 {len(self.users)} 个用户")
             except (json.JSONDecodeError, KeyError) as e:
-                print(f"Warning: Could not load users data: {e}")
+                logger.warning(f"无法加载用户数据: {e}")
         
         # 加载会话数据
         if os.path.exists(self.sessions_file):
@@ -65,8 +71,9 @@ class AuthService:
                         session = UserSession.from_dict(session_data)
                         if not session.is_expired():
                             self.sessions[session.session_id] = session
+                logger.info(f"已加载 {len(self.sessions)} 个活跃会话")
             except (json.JSONDecodeError, KeyError) as e:
-                print(f"Warning: Could not load sessions data: {e}")
+                logger.warning(f"无法加载会话数据: {e}")
     
     def _save_users(self) -> None:
         """保存用户数据到文件"""
@@ -118,9 +125,23 @@ class AuthService:
         Returns:
             注册结果字典
         """
+        # 验证用户名格式
+        if not username or len(username) < 3:
+            return {
+                'success': False,
+                'error': '用户名至少3个字符'
+            }
+        
+        if len(username) > 32:
+            return {
+                'success': False,
+                'error': '用户名不能超过32个字符'
+            }
+        
         # 验证用户名是否已存在
         for user in self.users.values():
             if user.username == username:
+                logger.warning(f"注册失败: 用户名 {username} 已存在")
                 return {
                     'success': False,
                     'error': '用户名已存在'
@@ -135,11 +156,12 @@ class AuthService:
                 'error': '无效的用户角色，请选择 teacher 或 student'
             }
         
-        # 验证密码强度
-        if len(password) < 6:
+        # 验证密码强度（使用密码策略）
+        is_valid, error_msg = PasswordPolicy.validate(password)
+        if not is_valid:
             return {
                 'success': False,
-                'error': '密码长度至少6位'
+                'error': error_msg
             }
         
         # 如果是学生，验证教师ID
@@ -180,6 +202,8 @@ class AuthService:
                 teacher.managed_classes.append(class_name)
                 self._save_users()
         
+        logger.info(f"用户注册成功: {username} (角色: {role})")
+        
         return {
             'success': True,
             'message': '注册成功',
@@ -205,6 +229,7 @@ class AuthService:
                 break
         
         if user is None:
+            logger.warning(f"登录失败: 用户名 {username} 不存在")
             return {
                 'success': False,
                 'error': '用户名或密码错误'
@@ -212,6 +237,7 @@ class AuthService:
         
         # 验证密码
         if not user.verify_password(password):
+            logger.warning(f"登录失败: 用户 {username} 密码错误")
             return {
                 'success': False,
                 'error': '用户名或密码错误'
@@ -219,6 +245,7 @@ class AuthService:
         
         # 检查用户是否激活
         if not user.is_active:
+            logger.warning(f"登录失败: 用户 {username} 已被禁用")
             return {
                 'success': False,
                 'error': '账户已被禁用，请联系管理员'
@@ -238,6 +265,8 @@ class AuthService:
         # 保存会话
         self.sessions[session.session_id] = session
         self._save_sessions()
+        
+        logger.info(f"用户登录成功: {username}")
         
         return {
             'success': True,
@@ -259,6 +288,7 @@ class AuthService:
         if session_id in self.sessions:
             del self.sessions[session_id]
             self._save_sessions()
+            logger.info(f"会话已登出: {session_id[:8]}...")
         
         return {
             'success': True,

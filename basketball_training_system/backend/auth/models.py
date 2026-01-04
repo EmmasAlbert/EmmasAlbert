@@ -5,20 +5,67 @@ User models for Basketball Training System.
 Features:
 - Teacher role: Management capabilities (view all students, manage classes)
 - Student role: Training and practice features
+- Secure password hashing using bcrypt
 """
 
 from enum import Enum
 from dataclasses import dataclass, field
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from datetime import datetime
-import hashlib
 import secrets
+import re
+
+# Try to import bcrypt for secure password hashing
+try:
+    import bcrypt
+    BCRYPT_AVAILABLE = True
+except ImportError:
+    BCRYPT_AVAILABLE = False
+    import hashlib
 
 
 class UserRole(Enum):
     """用户角色枚举"""
     TEACHER = "teacher"  # 教师 - 管理功能
     STUDENT = "student"  # 学生 - 训练功能
+
+
+class PasswordPolicy:
+    """密码策略验证类"""
+    
+    MIN_LENGTH = 8
+    REQUIRE_UPPERCASE = True
+    REQUIRE_LOWERCASE = True
+    REQUIRE_DIGIT = True
+    REQUIRE_SPECIAL = False  # 可选，对于中小学生系统不强制要求
+    
+    @classmethod
+    def validate(cls, password: str) -> Tuple[bool, str]:
+        """
+        验证密码是否符合策略
+        
+        Args:
+            password: 明文密码
+            
+        Returns:
+            (是否通过, 错误信息)
+        """
+        if len(password) < cls.MIN_LENGTH:
+            return False, f'密码长度至少{cls.MIN_LENGTH}位'
+        
+        if cls.REQUIRE_UPPERCASE and not re.search(r'[A-Z]', password):
+            return False, '密码必须包含至少一个大写字母'
+        
+        if cls.REQUIRE_LOWERCASE and not re.search(r'[a-z]', password):
+            return False, '密码必须包含至少一个小写字母'
+        
+        if cls.REQUIRE_DIGIT and not re.search(r'\d', password):
+            return False, '密码必须包含至少一个数字'
+        
+        if cls.REQUIRE_SPECIAL and not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            return False, '密码必须包含至少一个特殊字符'
+        
+        return True, ''
 
 
 @dataclass
@@ -58,7 +105,7 @@ class User:
     @staticmethod
     def hash_password(password: str) -> str:
         """
-        对密码进行哈希处理
+        对密码进行哈希处理 - 使用bcrypt（推荐）或SHA256（后备）
         
         Args:
             password: 明文密码
@@ -66,8 +113,14 @@ class User:
         Returns:
             密码哈希值
         """
-        salt = "basketball_training_salt"
-        return hashlib.sha256(f"{password}{salt}".encode()).hexdigest()
+        if BCRYPT_AVAILABLE:
+            # 使用bcrypt进行安全哈希（自动生成随机盐值）
+            return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        else:
+            # 后备方案：使用SHA256（不推荐用于生产环境）
+            salt = secrets.token_hex(16)
+            hash_value = hashlib.sha256(f"{password}{salt}".encode()).hexdigest()
+            return f"sha256${salt}${hash_value}"
     
     @staticmethod
     def generate_user_id() -> str:
@@ -84,7 +137,27 @@ class User:
         Returns:
             密码是否正确
         """
-        return self.password_hash == self.hash_password(password)
+        if BCRYPT_AVAILABLE and self.password_hash.startswith('$2'):
+            # bcrypt格式的哈希
+            try:
+                return bcrypt.checkpw(password.encode('utf-8'), self.password_hash.encode('utf-8'))
+            except (ValueError, TypeError):
+                return False
+        elif self.password_hash.startswith('sha256$'):
+            # SHA256格式（用于兼容旧数据）
+            parts = self.password_hash.split('$')
+            if len(parts) == 3:
+                salt = parts[1]
+                stored_hash = parts[2]
+                check_hash = hashlib.sha256(f"{password}{salt}".encode()).hexdigest()
+                return stored_hash == check_hash
+            return False
+        else:
+            # 旧的静态盐格式（仅用于向后兼容）
+            import hashlib
+            old_salt = "basketball_training_salt"
+            old_hash = hashlib.sha256(f"{password}{old_salt}".encode()).hexdigest()
+            return self.password_hash == old_hash
     
     def is_teacher(self) -> bool:
         """是否为教师"""

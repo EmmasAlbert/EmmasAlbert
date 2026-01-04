@@ -13,8 +13,19 @@ This application provides:
 """
 
 import os
+import logging
 from flask import Flask, render_template, send_from_directory
 from flask_cors import CORS
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+    ]
+)
+logger = logging.getLogger(__name__)
 
 from basketball_training_system.backend.api.routes import api
 from basketball_training_system.backend.api.service import create_service
@@ -29,8 +40,16 @@ except ImportError:
     AuthServiceDB = None
     DB_AUTH_AVAILABLE = False
 
+# Try to import Flask-WTF for CSRF protection
+try:
+    from flask_wtf.csrf import CSRFProtect
+    CSRF_AVAILABLE = True
+except ImportError:
+    CSRFProtect = None
+    CSRF_AVAILABLE = False
 
-def create_app(config=None, use_database=False, db_config=None):
+
+def create_app(config=None, use_database=False, db_config=None, enable_csrf=True):
     """
     Application factory for creating the Flask app.
     
@@ -38,6 +57,7 @@ def create_app(config=None, use_database=False, db_config=None):
         config: Optional configuration dictionary.
         use_database: Whether to use MySQL database for storage.
         db_config: Database configuration dictionary.
+        enable_csrf: Whether to enable CSRF protection (default: True).
         
     Returns:
         Configured Flask application.
@@ -56,6 +76,11 @@ def create_app(config=None, use_database=False, db_config=None):
         'MODEL_PATH': os.environ.get('MODEL_PATH', None),
         'POSE_MODEL_PATH': os.environ.get('POSE_MODEL_PATH', None),
         'USE_DATABASE': use_database or os.environ.get('USE_DATABASE', 'false').lower() == 'true',
+        'WTF_CSRF_ENABLED': enable_csrf and CSRF_AVAILABLE,
+        'WTF_CSRF_CHECK_DEFAULT': False,  # We use custom CSRF handling for API
+        'SESSION_COOKIE_SECURE': os.environ.get('SECURE_COOKIES', 'false').lower() == 'true',
+        'SESSION_COOKIE_HTTPONLY': True,
+        'SESSION_COOKIE_SAMESITE': 'Lax',
     })
     
     if config:
@@ -63,6 +88,16 @@ def create_app(config=None, use_database=False, db_config=None):
     
     # Enable CORS
     CORS(app)
+    
+    # Enable CSRF protection if available
+    if enable_csrf and CSRF_AVAILABLE:
+        csrf = CSRFProtect(app)
+        # Exempt API routes from CSRF (they use session tokens instead)
+        csrf.exempt(api)
+        csrf.exempt(auth_bp)
+        csrf.exempt(teacher_bp)
+        csrf.exempt(student_bp)
+        logger.info("✓ CSRF 保护已启用")
     
     # Initialize services
     data_dir = app.config['DATA_DIR']
@@ -81,14 +116,14 @@ def create_app(config=None, use_database=False, db_config=None):
                     'database': os.environ.get('DB_NAME', 'basketball_training'),
                 }
             auth_service = AuthServiceDB(db_config=db_config)
-            print("✓ 使用 MySQL 数据库存储")
+            logger.info("✓ 使用 MySQL 数据库存储")
         except Exception as e:
-            print(f"⚠ 无法连接数据库，回退到 JSON 文件存储: {e}")
+            logger.warning(f"⚠ 无法连接数据库，回退到 JSON 文件存储: {e}")
             auth_service = AuthService(data_dir=data_dir)
     else:
         # Use JSON file storage (default)
         auth_service = AuthService(data_dir=data_dir)
-        print("✓ 使用 JSON 文件存储")
+        logger.info("✓ 使用 JSON 文件存储")
     
     app.config['auth_service'] = auth_service
     
@@ -101,8 +136,9 @@ def create_app(config=None, use_database=False, db_config=None):
         )
         app.config['analyzer_service'] = analyzer_service
         app.config['data_analyzer'] = analyzer_service.data_analyzer
+        logger.info("✓ 分析服务初始化成功")
     except Exception as e:
-        print(f"Warning: Could not initialize analyzer service: {e}")
+        logger.warning(f"⚠ 无法初始化分析服务: {e}")
         app.config['analyzer_service'] = None
         app.config['data_analyzer'] = DataAnalyzer(data_dir=data_dir)
     

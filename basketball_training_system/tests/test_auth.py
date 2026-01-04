@@ -10,8 +10,45 @@ import shutil
 import pytest
 from datetime import datetime, timedelta
 
-from basketball_training_system.backend.auth.models import User, UserRole, UserSession
+from basketball_training_system.backend.auth.models import User, UserRole, UserSession, PasswordPolicy
 from basketball_training_system.backend.auth.auth_service import AuthService
+
+# 符合密码策略的测试密码
+TEST_PASSWORD = "TestPass123"  # 满足: 8位，大写，小写，数字
+
+
+class TestPasswordPolicy:
+    """Tests for Password Policy."""
+    
+    def test_valid_password(self):
+        """Test valid password passes policy."""
+        is_valid, error = PasswordPolicy.validate("TestPass123")
+        assert is_valid
+        assert error == ""
+    
+    def test_short_password(self):
+        """Test short password fails."""
+        is_valid, error = PasswordPolicy.validate("Test1")
+        assert not is_valid
+        assert "至少" in error
+    
+    def test_no_uppercase(self):
+        """Test password without uppercase fails."""
+        is_valid, error = PasswordPolicy.validate("testpass123")
+        assert not is_valid
+        assert "大写" in error
+    
+    def test_no_lowercase(self):
+        """Test password without lowercase fails."""
+        is_valid, error = PasswordPolicy.validate("TESTPASS123")
+        assert not is_valid
+        assert "小写" in error
+    
+    def test_no_digit(self):
+        """Test password without digit fails."""
+        is_valid, error = PasswordPolicy.validate("TestPassword")
+        assert not is_valid
+        assert "数字" in error
 
 
 class TestUserModel:
@@ -22,7 +59,7 @@ class TestUserModel:
         user = User(
             user_id="test123",
             username="testuser",
-            password_hash=User.hash_password("password123"),
+            password_hash=User.hash_password(TEST_PASSWORD),
             role=UserRole.STUDENT,
             real_name="测试用户"
         )
@@ -39,7 +76,7 @@ class TestUserModel:
         user = User(
             user_id="teacher123",
             username="teacher",
-            password_hash=User.hash_password("password"),
+            password_hash=User.hash_password(TEST_PASSWORD),
             role=UserRole.TEACHER,
             real_name="张老师"
         )
@@ -48,17 +85,19 @@ class TestUserModel:
         assert not user.is_student()
     
     def test_password_hashing(self):
-        """Test password hashing."""
-        password = "secure_password"
+        """Test password hashing produces different hashes with bcrypt."""
+        password = "SecurePass123"
         hash1 = User.hash_password(password)
         hash2 = User.hash_password(password)
         
-        assert hash1 == hash2
+        # With bcrypt, each hash is different due to random salt
+        # But both should verify correctly
         assert hash1 != password
+        assert hash2 != password
     
     def test_password_verification(self):
         """Test password verification."""
-        password = "my_password"
+        password = "MySecure123"
         user = User(
             user_id="test",
             username="test",
@@ -67,7 +106,7 @@ class TestUserModel:
         )
         
         assert user.verify_password(password)
-        assert not user.verify_password("wrong_password")
+        assert not user.verify_password("WrongPass123")
     
     def test_user_to_dict(self):
         """Test converting user to dictionary."""
@@ -171,7 +210,7 @@ class TestAuthService:
         """Test student registration."""
         result = auth_service.register(
             username="student1",
-            password="password123",
+            password=TEST_PASSWORD,
             role="student",
             real_name="小明",
             class_name="三年级1班",
@@ -186,7 +225,7 @@ class TestAuthService:
         """Test teacher registration."""
         result = auth_service.register(
             username="teacher1",
-            password="password123",
+            password=TEST_PASSWORD,
             role="teacher",
             real_name="张老师",
             school="北京小学"
@@ -200,13 +239,13 @@ class TestAuthService:
         """Test registering with duplicate username."""
         auth_service.register(
             username="testuser",
-            password="password123",
+            password=TEST_PASSWORD,
             role="student"
         )
         
         result = auth_service.register(
             username="testuser",
-            password="password456",
+            password="AnotherPass456",
             role="student"
         )
         
@@ -228,11 +267,11 @@ class TestAuthService:
         """Test successful login."""
         auth_service.register(
             username="testuser",
-            password="password123",
+            password=TEST_PASSWORD,
             role="student"
         )
         
-        result = auth_service.login("testuser", "password123")
+        result = auth_service.login("testuser", TEST_PASSWORD)
         
         assert result['success']
         assert 'session_id' in result
@@ -242,18 +281,18 @@ class TestAuthService:
         """Test login with wrong password."""
         auth_service.register(
             username="testuser",
-            password="password123",
+            password=TEST_PASSWORD,
             role="student"
         )
         
-        result = auth_service.login("testuser", "wrongpassword")
+        result = auth_service.login("testuser", "WrongPass123")
         
         assert not result['success']
         assert '用户名或密码错误' in result['error']
     
     def test_login_nonexistent_user(self, auth_service):
         """Test login with nonexistent user."""
-        result = auth_service.login("nonexistent", "password")
+        result = auth_service.login("nonexistent", "SomePass123")
         
         assert not result['success']
     
@@ -261,11 +300,11 @@ class TestAuthService:
         """Test logout."""
         auth_service.register(
             username="testuser",
-            password="password123",
+            password=TEST_PASSWORD,
             role="student"
         )
         
-        login_result = auth_service.login("testuser", "password123")
+        login_result = auth_service.login("testuser", TEST_PASSWORD)
         session_id = login_result['session_id']
         
         # User should be findable before logout
@@ -283,12 +322,12 @@ class TestAuthService:
         """Test getting user by session ID."""
         auth_service.register(
             username="testuser",
-            password="password123",
+            password=TEST_PASSWORD,
             role="student",
             real_name="测试"
         )
         
-        login_result = auth_service.login("testuser", "password123")
+        login_result = auth_service.login("testuser", TEST_PASSWORD)
         session_id = login_result['session_id']
         
         user = auth_service.get_user_by_session(session_id)
@@ -302,7 +341,7 @@ class TestAuthService:
         # Create teacher
         teacher_result = auth_service.register(
             username="teacher1",
-            password="password123",
+            password=TEST_PASSWORD,
             role="teacher"
         )
         teacher_id = teacher_result['user']['user_id']
@@ -310,19 +349,19 @@ class TestAuthService:
         # Create students
         auth_service.register(
             username="student1",
-            password="password123",
+            password=TEST_PASSWORD,
             role="student",
             teacher_id=teacher_id
         )
         auth_service.register(
             username="student2",
-            password="password123",
+            password=TEST_PASSWORD,
             role="student",
             teacher_id=teacher_id
         )
         auth_service.register(
             username="student3",
-            password="password123",
+            password=TEST_PASSWORD,
             role="student"  # No teacher
         )
         
@@ -335,7 +374,7 @@ class TestAuthService:
         """Test updating user information."""
         result = auth_service.register(
             username="testuser",
-            password="password123",
+            password=TEST_PASSWORD,
             role="student"
         )
         user_id = result['user']['user_id']
@@ -355,7 +394,7 @@ class TestAuthService:
         service1 = AuthService(data_dir=temp_dir)
         service1.register(
             username="testuser",
-            password="password123",
+            password=TEST_PASSWORD,
             role="student",
             real_name="测试用户"
         )
@@ -390,7 +429,7 @@ class TestRoleBasedAccess:
         # Create teacher
         auth_service.register(
             username="teacher",
-            password="password123",
+            password=TEST_PASSWORD,
             role="teacher"
         )
         
@@ -398,7 +437,7 @@ class TestRoleBasedAccess:
         for i in range(5):
             auth_service.register(
                 username=f"student{i}",
-                password="password123",
+                password=TEST_PASSWORD,
                 role="student"
             )
         
@@ -410,19 +449,19 @@ class TestRoleBasedAccess:
         # Create students in different classes
         auth_service.register(
             username="student1",
-            password="password123",
+            password=TEST_PASSWORD,
             role="student",
             class_name="三年级1班"
         )
         auth_service.register(
             username="student2",
-            password="password123",
+            password=TEST_PASSWORD,
             role="student",
             class_name="三年级1班"
         )
         auth_service.register(
             username="student3",
-            password="password123",
+            password=TEST_PASSWORD,
             role="student",
             class_name="三年级2班"
         )

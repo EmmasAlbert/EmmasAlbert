@@ -30,10 +30,30 @@ def allowed_file(filename: str) -> bool:
 
 @api.route('/health', methods=['GET'])
 def health_check():
-    """Health check endpoint."""
+    """
+    Health check endpoint.
+    
+    Returns system health status and information.
+    """
+    import sys
+    
+    # Check analyzer service
+    analyzer_service = current_app.config.get('analyzer_service')
+    analyzer_status = 'available' if analyzer_service is not None else 'unavailable'
+    
+    # Check auth service
+    auth_service = current_app.config.get('auth_service')
+    auth_status = 'available' if auth_service is not None else 'unavailable'
+    
     return jsonify({
         'status': 'healthy',
-        'timestamp': datetime.now().isoformat()
+        'timestamp': datetime.now().isoformat(),
+        'version': '1.0.0',
+        'python_version': sys.version,
+        'services': {
+            'analyzer': analyzer_status,
+            'auth': auth_status
+        }
     })
 
 

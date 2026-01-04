@@ -94,7 +94,7 @@ class DatabaseManager:
             raise ImportError("pymysql is not installed. Install it with: pip install pymysql")
         
         self.config = config or DatabaseConfig.from_env()
-        self._connection: Optional[pymysql.Connection] = None
+        self._connection = None
         self._initialized = False
     
     @classmethod
@@ -104,7 +104,7 @@ class DatabaseManager:
             cls._instance = cls(config)
         return cls._instance
     
-    def connect(self) -> pymysql.Connection:
+    def connect(self):
         """获取数据库连接"""
         if self._connection is None or not self._connection.open:
             self._connection = pymysql.connect(**self.config.to_dict())
