@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设置 - 篮球训练辅助系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="logo">🏀</span>
+            <span class="brand-text">篮球训练辅助系统</span>
+        </div>
+        <div class="nav-links">
+            <a href="/" class="nav-link">首页</a>
+            <a href="/analysis" class="nav-link">视频分析</a>
+            <a href="/realtime" class="nav-link">实时检测</a>
+            <a href="/history" class="nav-link">训练记录</a>
+            <a href="/settings" class="nav-link active">设置</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <h1>系统设置</h1>
+
+        <form class="settings-form" id="settingsForm">
+            <section class="settings-section">
+                <h2>⚙️ 分析设置</h2>
+                
+                <div class="form-group">
+                    <label for="defaultHand">默认投篮手</label>
+                    <select id="defaultHand" name="shooting_hand">
+                        <option value="right">右手</option>
+                        <option value="left">左手</option>
+                    </select>
+                    <p class="help-text">设置分析时使用的默认投篮手</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="defaultSkipFrames">默认跳帧数</label>
+                    <input type="number" id="defaultSkipFrames" name="skip_frames" value="0" min="0" max="10">
+                    <p class="help-text">跳过指定数量的帧以加快分析速度（0表示分析每一帧）</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="confThreshold">检测置信度阈值</label>
+                    <input type="range" id="confThreshold" name="conf_threshold" min="0.1" max="0.9" step="0.05" value="0.5">
+                    <span class="range-value" id="confThresholdValue">0.5</span>
+                    <p class="help-text">目标检测的置信度阈值，值越高检测越严格</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="showAngles" name="show_angles" checked>
+                        <span>显示角度信息</span>
+                    </label>
+                    <p class="help-text">在分析结果中显示关节角度数值</p>
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <h2>📊 理想投篮姿势参数</h2>
+                <p class="section-description">这些参数用于评估投篮姿势质量</p>
+                
+                <div class="form-group">
+                    <label>理想肘部角度范围</label>
+                    <div class="range-inputs">
+                        <input type="number" id="elbowMin" value="85" min="60" max="120"> °
+                        <span>至</span>
+                        <input type="number" id="elbowMax" value="105" min="60" max="120"> °
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>理想肩部角度范围</label>
+                    <div class="range-inputs">
+                        <input type="number" id="shoulderMin" value="80" min="60" max="150"> °
+                        <span>至</span>
+                        <input type="number" id="shoulderMax" value="120" min="60" max="150"> °
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>理想膝盖角度范围</label>
+                    <div class="range-inputs">
+                        <input type="number" id="kneeMin" value="140" min="100" max="180"> °
+                        <span>至</span>
+                        <input type="number" id="kneeMax" value="170" min="100" max="180"> °
+                    </div>
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <h2>🔌 系统信息</h2>
+                <div class="system-info">
+                    <div class="info-item">
+                        <span class="info-label">系统版本:</span>
+                        <span class="info-value">1.0.0</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">API状态:</span>
+                        <span class="info-value status" id="apiStatus">检查中...</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">模型状态:</span>
+                        <span class="info-value status" id="modelStatus">检查中...</span>
+                    </div>
+                </div>
+            </section>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">保存设置</button>
+                <button type="button" class="btn btn-secondary" id="resetBtn">恢复默认</button>
+            </div>
+        </form>
+
+        <div class="toast" id="toast" style="display: none;">
+            <span class="toast-message" id="toastMessage"></span>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>© 2024 篮球训练辅助系统</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+</body>
+</html>

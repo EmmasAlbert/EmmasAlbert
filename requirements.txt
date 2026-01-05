@@ -1,0 +1,29 @@
+# Basketball Training Assistance System - Dependencies
+# 篮球训练辅助系统 - 依赖项
+
+# Core
+numpy>=1.21.0
+opencv-python>=4.5.0
+
+# Deep Learning & Computer Vision
+ultralytics>=8.0.0
+torch>=1.10.0
+
+# Web Framework
+flask>=2.0.0
+flask-cors>=3.0.10
+flask-wtf>=1.2.1
+werkzeug>=2.0.0
+
+# Security
+bcrypt>=4.0.1
+
+# Database
+pymysql>=1.1.1
+
+# Visualization (optional)
+matplotlib>=3.5.0
+
+# Development
+pytest>=7.0.0
+pytest-cov>=3.0.0

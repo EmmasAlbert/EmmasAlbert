@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 - 篮球训练辅助系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="logo">🏀</span>
+            <span class="brand-text">篮球训练辅助系统</span>
+        </div>
+        <div class="nav-links">
+            <a href="/" class="nav-link">首页</a>
+            <a href="/login" class="nav-link">登录</a>
+            <a href="/register" class="nav-link active">注册</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="auth-container">
+            <div class="auth-card wide">
+                <h1>🏀 用户注册</h1>
+                <p class="subtitle">创建您的账户加入训练</p>
+                
+                <form id="registerForm" class="auth-form">
+                    <!-- 角色选择 -->
+                    <div class="role-selector">
+                        <label>选择身份:</label>
+                        <div class="role-options">
+                            <div class="role-option" data-role="student">
+                                <div class="role-icon">👨‍🎓</div>
+                                <div class="role-name">学生</div>
+                                <div class="role-desc">使用系统进行篮球训练</div>
+                            </div>
+                            <div class="role-option" data-role="teacher">
+                                <div class="role-icon">👨‍🏫</div>
+                                <div class="role-name">教师</div>
+                                <div class="role-desc">管理学生和查看训练数据</div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="role" name="role" value="student" required>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="username">用户名 <span class="required">*</span></label>
+                            <input type="text" id="username" name="username" required 
+                                   placeholder="请输入用户名" minlength="3">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="password">密码 <span class="required">*</span></label>
+                            <input type="password" id="password" name="password" required 
+                                   placeholder="至少6位密码" minlength="6">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="real_name">真实姓名</label>
+                            <input type="text" id="real_name" name="real_name" 
+                                   placeholder="请输入真实姓名">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="school">学校</label>
+                            <input type="text" id="school" name="school" 
+                                   placeholder="请输入学校名称">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="grade">年级</label>
+                            <select id="grade" name="grade">
+                                <option value="">请选择年级</option>
+                                <option value="小学一年级">小学一年级</option>
+                                <option value="小学二年级">小学二年级</option>
+                                <option value="小学三年级">小学三年级</option>
+                                <option value="小学四年级">小学四年级</option>
+                                <option value="小学五年级">小学五年级</option>
+                                <option value="小学六年级">小学六年级</option>
+                                <option value="初中一年级">初中一年级</option>
+                                <option value="初中二年级">初中二年级</option>
+                                <option value="初中三年级">初中三年级</option>
+                                <option value="高中一年级">高中一年级</option>
+                                <option value="高中二年级">高中二年级</option>
+                                <option value="高中三年级">高中三年级</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="class_name">班级</label>
+                            <input type="text" id="class_name" name="class_name" 
+                                   placeholder="例如: 三年级2班">
+                        </div>
+                    </div>
+                    
+                    <!-- 学生特有字段 -->
+                    <div class="form-group student-only">
+                        <label for="teacher_id">选择指导教师</label>
+                        <select id="teacher_id" name="teacher_id">
+                            <option value="">暂不选择教师</option>
+                        </select>
+                        <p class="help-text">选择您的指导教师，教师可以查看您的训练记录</p>
+                    </div>
+                    
+                    <div class="error-message" id="errorMessage" style="display: none;"></div>
+                    <div class="success-message" id="successMessage" style="display: none;"></div>
+                    
+                    <button type="submit" class="btn btn-primary btn-large btn-block">
+                        注册
+                    </button>
+                </form>
+                
+                <div class="auth-footer">
+                    <p>已有账户？<a href="/login">立即登录</a></p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>© 2024 篮球训练辅助系统 - 中小学生篮球训练平台</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        // 角色选择
+        const roleOptions = document.querySelectorAll('.role-option');
+        const roleInput = document.getElementById('role');
+        const studentOnlyFields = document.querySelector('.student-only');
+        
+        roleOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                roleOptions.forEach(o => o.classList.remove('selected'));
+                option.classList.add('selected');
+                roleInput.value = option.dataset.role;
+                
+                // 显示/隐藏学生特有字段
+                if (option.dataset.role === 'student') {
+                    studentOnlyFields.style.display = 'block';
+                } else {
+                    studentOnlyFields.style.display = 'none';
+                }
+            });
+        });
+        
+        // 默认选中学生
+        document.querySelector('.role-option[data-role="student"]').classList.add('selected');
+        
+        // 加载教师列表
+        async function loadTeachers() {
+            try {
+                const response = await fetch('/api/auth/teachers');
+                const result = await response.json();
+                
+                const teacherSelect = document.getElementById('teacher_id');
+                
+                if (result.success && result.teachers.length > 0) {
+                    result.teachers.forEach(teacher => {
+                        const option = document.createElement('option');
+                        option.value = teacher.user_id;
+                        option.textContent = `${teacher.real_name || teacher.username} - ${teacher.school || '未知学校'}`;
+                        teacherSelect.appendChild(option);
+                    });
+                }
+            } catch (e) {
+                console.error('Failed to load teachers:', e);
+            }
+        }
+        loadTeachers();
+        
+        // 表单提交
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value,
+                role: document.getElementById('role').value,
+                real_name: document.getElementById('real_name').value,
+                school: document.getElementById('school').value,
+                grade: document.getElementById('grade').value,
+                class_name: document.getElementById('class_name').value
+            };
+            
+            // 学生添加教师ID
+            if (formData.role === 'student') {
+                const teacherId = document.getElementById('teacher_id').value;
+                if (teacherId) {
+                    formData.teacher_id = teacherId;
+                }
+            }
+            
+            const errorDiv = document.getElementById('errorMessage');
+            const successDiv = document.getElementById('successMessage');
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    successDiv.textContent = '注册成功！正在跳转到登录页面...';
+                    successDiv.style.display = 'block';
+                    
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 1500);
+                } else {
+                    errorDiv.textContent = result.error;
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                errorDiv.textContent = '注册失败，请稍后重试';
+                errorDiv.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

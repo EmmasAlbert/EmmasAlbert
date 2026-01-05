@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 篮球训练辅助系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="logo">🏀</span>
+            <span class="brand-text">篮球训练辅助系统</span>
+        </div>
+        <div class="nav-links">
+            <a href="/" class="nav-link">首页</a>
+            <a href="/login" class="nav-link active">登录</a>
+            <a href="/register" class="nav-link">注册</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="auth-container">
+            <div class="auth-card">
+                <h1>🏀 用户登录</h1>
+                <p class="subtitle">登录您的账户开始训练</p>
+                
+                <form id="loginForm" class="auth-form">
+                    <div class="form-group">
+                        <label for="username">用户名</label>
+                        <input type="text" id="username" name="username" required 
+                               placeholder="请输入用户名">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">密码</label>
+                        <input type="password" id="password" name="password" required 
+                               placeholder="请输入密码">
+                    </div>
+                    
+                    <div class="error-message" id="errorMessage" style="display: none;"></div>
+                    
+                    <button type="submit" class="btn btn-primary btn-large btn-block">
+                        登录
+                    </button>
+                </form>
+                
+                <div class="auth-footer">
+                    <p>还没有账户？<a href="/register">立即注册</a></p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>© 2024 篮球训练辅助系统 - 中小学生篮球训练平台</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('errorMessage');
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // 保存会话信息
+                    localStorage.setItem('session_id', result.session_id);
+                    localStorage.setItem('user', JSON.stringify(result.user));
+                    
+                    // 根据角色跳转到不同页面
+                    if (result.user.role === 'teacher') {
+                        window.location.href = '/teacher';
+                    } else {
+                        window.location.href = '/analysis';
+                    }
+                } else {
+                    errorDiv.textContent = result.error;
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                errorDiv.textContent = '登录失败，请稍后重试';
+                errorDiv.style.display = 'block';
+            }
+        });
+        
+        // 检查是否已登录
+        (async () => {
+            try {
+                const response = await fetch('/api/auth/check');
+                const result = await response.json();
+                if (result.authenticated) {
+                    if (result.user.role === 'teacher') {
+                        window.location.href = '/teacher';
+                    } else {
+                        window.location.href = '/analysis';
+                    }
+                }
+            } catch (e) {}
+        })();
+    </script>
+</body>
+</html>
