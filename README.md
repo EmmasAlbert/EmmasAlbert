@@ -83,6 +83,13 @@ docker-compose up -d
 # 后端API: http://localhost:8000/api/docs
 ```
 
+### 📘 新手指南
+
+**第一次使用？** 请查看：
+- 📖 [完整用户使用指南](docs/USER_GUIDE_CN.md) - 详细的使用说明（推荐）
+- 📋 [快速参考手册](docs/QUICK_REFERENCE.md) - 常用命令速查
+- 🎯 [快速开始](QUICK_START.md) - 3分钟快速上手
+
 ### 手动部署
 
 详细安装步骤请查看 [安装指南](docs/INSTALLATION.md)
@@ -136,11 +143,25 @@ datasets/basketball/
 
 ## 📖 文档
 
+### 用户文档
+- 📘 [**用户使用指南（中文）**](docs/USER_GUIDE_CN.md) - 完整的使用教程，按角色详细说明
+- 📋 [**快速参考手册**](docs/QUICK_REFERENCE.md) - 常用命令和操作速查表
+- 🎯 [快速开始](QUICK_START.md) - 3分钟快速入门
+
+### 开发文档
 - [系统架构文档](docs/SYSTEM_ARCHITECTURE.md) - 完整的系统架构说明
 - [功能模块设计](docs/MODULE_DESIGN.md) - 详细的功能设计文档
 - [安装部署指南](docs/INSTALLATION.md) - 完整的安装部署步骤
 - [API使用指南](docs/API_GUIDE.md) - API接口文档和示例
+
+### 训练文档
+- [YOLOv8训练指南（中文）](docs/YOLOV8_TRAINING_GUIDE_CN.md) - 详细的模型训练教程
+- [YOLOv8训练指南（英文）](docs/YOLOV8_TRAINING_GUIDE.md) - Complete training guide
+- [训练快速示例](docs/YOLOV8_TRAINING_EXAMPLE.md) - 快速上手训练
+
+### 其他
 - [项目详细说明](PROJECT_README.md) - 更详细的项目介绍
+- [实现总结](docs/IMPLEMENTATION_SUMMARY.md) - 实现说明文档
 
 ## 🛠️ 技术栈
 
