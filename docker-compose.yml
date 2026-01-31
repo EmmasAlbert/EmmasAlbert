@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  # MySQL数据库
+  mysql:
+    image: mysql:8.0
+    container_name: basketball_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: basketball_training
+      MYSQL_USER: basketball_user
+      MYSQL_PASSWORD: basketball_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/schemas:/docker-entrypoint-initdb.d
+    networks:
+      - basketball_network
+
+  # Redis缓存
+  redis:
+    image: redis:7-alpine
+    container_name: basketball_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - basketball_network
+
+  # MinIO对象存储
+  minio:
+    image: minio/minio:latest
+    container_name: basketball_minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - basketball_network
+
+  # 后端API服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: basketball_backend
+    environment:
+      DATABASE_URL: mysql+pymysql://basketball_user:basketball_pass@mysql:3306/basketball_training
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MINIO_ENDPOINT: minio:9000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./ai_engine:/app/ai_engine
+    depends_on:
+      - mysql
+      - redis
+      - minio
+    networks:
+      - basketball_network
+
+  # 前端服务
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: basketball_frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - basketball_network
+
+  # Celery Worker (异步任务处理)
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: basketball_celery_worker
+    command: celery -A app.celery_app worker --loglevel=info
+    environment:
+      DATABASE_URL: mysql+pymysql://basketball_user:basketball_pass@mysql:3306/basketball_training
+      REDIS_HOST: redis
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    volumes:
+      - ./backend:/app
+      - ./ai_engine:/app/ai_engine
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - basketball_network
+
+volumes:
+  mysql_data:
+  redis_data:
+  minio_data:
+
+networks:
+  basketball_network:
+    driver: bridge
