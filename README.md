@@ -87,6 +87,53 @@ docker-compose up -d
 
 详细安装步骤请查看 [安装指南](docs/INSTALLATION.md)
 
+## 🎓 训练自定义YOLOv8模型
+
+本项目支持训练自己的YOLOv8模型来检测篮球场景中的球员、篮球和球筐。
+
+### 快速训练指南
+
+1. **准备标注数据集**（YOLO格式）
+2. **配置数据集路径** (`ai_engine/training/dataset_config.yaml`)
+3. **开始训练**：
+
+```bash
+cd ai_engine/training
+
+# 基础训练
+python train_yolov8.py --config dataset_config.yaml --model n --epochs 100
+
+# GPU训练（推荐）
+python train_yolov8.py --config dataset_config.yaml --model s --epochs 100 --device 0
+```
+
+4. **评估模型**：
+
+```bash
+python train_yolov8.py \
+    --config dataset_config.yaml \
+    --mode eval \
+    --weights runs/basketball_detection/basketball_yolov8s/weights/best.pt
+```
+
+### 详细教程
+
+完整的训练教程（包括数据准备、标注工具、训练技巧等）请查看：
+- 📚 [YOLOv8训练完整指南（中文）](docs/YOLOV8_TRAINING_GUIDE_CN.md)
+- 📁 [训练模块说明](ai_engine/training/README.md)
+
+### 数据集格式
+
+```
+datasets/basketball/
+├── images/
+│   ├── train/   # 训练集图片
+│   └── val/     # 验证集图片
+└── labels/
+    ├── train/   # 训练集标注（YOLO格式 .txt）
+    └── val/     # 验证集标注
+```
+
 ## 📖 文档
 
 - [系统架构文档](docs/SYSTEM_ARCHITECTURE.md) - 完整的系统架构说明
